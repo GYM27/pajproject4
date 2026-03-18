@@ -1,0 +1,38 @@
+# --- BACKEND (Java/Maven) ---
+backend/target/
+!.mvn/wrapper/maven-wrapper.jar
+.kotlin
+*.log
+deployments/
+*.class
+*.jar
+*.war
+*.ear
+
+# --- FRONTEND (React/Node) ---
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+
+# --- IDEs e Sistema ---
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# --- Configurações específicas de IDEs ---
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+/nbproject/private/
+/nbbuild/
