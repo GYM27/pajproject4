@@ -1,0 +1,60 @@
+::after,
+::before {
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+}
+
+#box-lista {
+    border: none;
+    padding: 5px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 92%;
+}
+
+
+/* estilos para o html do JAVASCRIPT */
+.form-container {
+    background-color: #f8fafc;
+    padding: 15px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    width: 100%;
+}
+
+.form-container label {
+    width: 50%;
+    font-size: 14px;
+}
+
+#input-nome,
+#input-cliente {
+    border-radius: 12px;
+    height: 40px;
+    width: 40%;
+    border: 1px solid #ccc;
+    padding: 0px 0px 0px 15px;
+}
+
+#input-data-inicio,
+#input-data-fim {
+    height: 40px;
+    width: 20%;
+    border-radius: 12px;
+    border: 1px solid #ccc;
+    padding: 15px;
+}
+
+#input-estado {
+    border-radius: 12px;
+    height: 40px;
+    width: 20%;
+    border: 1px solid #ccc;
+    padding: 10px;
+}

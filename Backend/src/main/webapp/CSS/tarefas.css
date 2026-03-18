@@ -1,0 +1,107 @@
+#filtroEstado {
+  font-family: inherit;
+  font-size: 16px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-weight: 500;
+  width: 200px;
+}
+
+#formTarefa.form-hidden {
+  display: none;
+}
+
+#formTarefa {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.filtro {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.barra-acoes {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.barra-acoes label {
+  font-weight: 500;
+}
+
+/* card do formulário */
+.form-container {
+  background-color: #f8fafc;
+  padding: 20px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  animation: surgindo 0.3s ease-out;
+}
+
+/* labels */
+.form-container label {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* inputs */
+#titulo,
+#descricao {
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid #ccc;
+  padding: 10px;
+  font-family: inherit;
+}
+
+/* select */
+#estado {
+  height: 40px;
+  width: 200px;
+  border-radius: 12px;
+  border: 1px solid #ccc;
+  padding: 8px;
+}
+
+/* botões */
+.form-botoes {
+  display: flex;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+#guardarTarefa,
+#cancelarTarefa {
+  border: none;
+  background-color: transparent;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+#guardarTarefa:hover,
+#cancelarTarefa:hover {
+  opacity: 0.8;
+  transition: 0.3s;
+  transform: scale(1.5);
+}
+
+@keyframes surgindo {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}

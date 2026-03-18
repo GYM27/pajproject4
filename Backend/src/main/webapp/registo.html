@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CRM Bridge - Criar Conta</title>
+  <link rel="stylesheet" href="CSS/style-login.css">
+</head>
+<body class="login-page">
+  <header id="login-header"></header>
+
+  <main>
+    <div class="login-box">
+      <h2>Criar Nova Conta</h2>
+      <form id="register-form">
+        <label for="reg-username">Nome de Utilizador</label>
+        <input type="text" id="reg-username" placeholder="Escolha um utilizador" required>
+
+        <label for="reg-email">E-mail</label>
+        <input type="email" id="reg-email" placeholder="O seu e-mail" required>
+
+        <label for="reg-password">Palavra-passe</label>
+        <input type="password" id="reg-password" placeholder="Escolha uma senha" required>
+
+        <button type="button" class="botao" onclick="fazerRegisto()">REGISTAR</button>
+      </form>
+      <p>
+        Já tem conta? <a href="Login.html">Faça Login aqui</a>
+      </p>
+    </div>
+  </main>
+
+  <footer>
+    <h3>© 2026 Bridge. Todos os direitos reservados.</h3>
+  </footer>
+
+  <script src="JS/registo.js"></script>
+</body>
+</html>

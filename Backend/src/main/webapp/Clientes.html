@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="CSS/style.css">
+    <link rel="stylesheet" href="CSS/clientes.css">
+    <script src="JS/geral.js"></script>
+    <script src="JS/clientes.js"></script>
+    <script src="https://kit.fontawesome.com/dfe7b41c1f.js" crossorigin="anonymous"></script>
+    <title>Clientes</title>
+</head>
+
+<body class="clientes-page">
+
+    <div id="header-placeholder"></div>
+
+    <main id="clientes-main">
+
+        <div id="aside-placeholder"></div>
+
+        <div id="mural">
+
+            <div class="page-card">
+
+                <div class="barra-welcome">
+                    <h3>Gestão de Clientes</h3>
+                    <div class=button-edit-objects data-tooltip="Adicionar Novo Cliente">
+                        <i id="btn-adicionar" class="fa-solid fa-user-plus"></i>
+                    </div>
+                </div>
+
+                <div id="form-container" class="hidden">
+                    <form id="form-cliente">
+                        <input type="text" id="name-cliente" placeholder="Nome do Cliente" required>
+                        <input type="email" id="email-cliente" placeholder="E-mail" required>
+                        <input type="tel" id="phone-cliente" placeholder="Telefone" required>
+                        <input type="text" id="organization-cliente" placeholder="Organização" required>
+                        <div class="form-buttons">
+                            
+                            <button type="submit" id="btn-salvar" class="button-edit-objects" aria-label="Guardar" data-tooltip="Guardar"><i
+                                    class="fa-solid fa-floppy-disk"></i></button>
+                            <button type="button" id="cancelar" class="button-edit-objects" aria-label="Cancelar"
+                                data-tooltip="Cancelar"><i class="fa-solid fa-ban"></i></button>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="lista-clientes">
+                    <!-- Conteúdo dos clientes será carregado aqui via JavaScript -->
+                </div>
+                
+            </div>
+        </div>
+
+    </main>
+
+
+
+    <div id="footer-placeholder"></div>
+
+    <script>
+        loadHeader();
+        loadAside();
+        loadFooter();
+    </script>
+
+</body>
+
+</html>

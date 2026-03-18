@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Perfil</title>
+
+    <link rel="stylesheet" href="CSS/style.css"/>
+
+</head>
+
+<body class="perfil-page">
+<div id="header-placeholder"></div>
+
+<main id="perfil-main">
+    <div id="aside-placeholder"></div>
+
+    <div id="mural">
+        <div class="page-card">
+
+            <div class="barra-welcome">
+                <h3>Perfil do Utilizador</h3>
+            </div>
+
+            <div class="perfil-top">
+                <img id="fotoPerfil" src="" alt="Foto de perfil" class="foto-perfil"/>
+            </div>
+
+            <form id="perfil-form" class="perfil-form">
+                <div class="perfil-grid">
+                    <div class="form-group" id="usernameGroup">
+                        <label>Username</label>
+                        <input type="text" id="username" disabled/>
+                    </div>
+
+                    <div class="form-group" id="passwordGroup">
+                        <label>Password</label>
+                        <input type="password" id="password" placeholder="Nova password "/>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="email"/>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Telefone</label>
+                        <input type="text" id="cellphone"/>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Primeiro Nome</label>
+                        <input type="text" id="firstName"/>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Último Nome</label>
+                        <input type="text" id="lastName"/>
+                    </div>
+
+                    <div class="form-group form-full">
+                        <label>URL da Fotografia</label>
+                        <input type="text" id="photoUrl"/>
+                    </div>
+                </div>
+
+                <button type="submit" class="botao">Guardar Alterações</button>
+            </form>
+
+
+        </div>
+    </div>
+</main>
+
+<div id="footer-placeholder"></div>
+
+<script src="JS/geral.js"></script>
+<script src="JS/perfil.js"></script>
+
+<script>
+    loadHeader();
+    loadAside();
+    loadFooter();
+    if (typeof carregarPerfil === "function") carregarPerfil();
+</script>
+</body>
+</html>
