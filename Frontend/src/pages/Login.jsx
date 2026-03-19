@@ -30,22 +30,29 @@ function Login() {
     setInputs((values) => ({ ...values, [name]: value }));
   };
 
-  // Função para submeter o formulário (Tratamento Assíncrono)
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setError(null); // Limpa erros anteriores
+    setError(null);
 
     try {
-      // Chama a lógica de rede isolada no ficheiro de serviço
       const data = await loginUser(inputs);
 
-      // Sucesso: Atualiza o nome do utilizador na Store persistente
+      // Se o serviço devolveu o token, guardamos no "baú" do browser
+      if (data && data.token) {
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("userName", data.username || inputs.username);
+
+        // LOG DE DEBUG: Abre a consola (F12) e vê se isto aparece
+        console.log("Token guardado com sucesso:", data.token);
+      }
+
       updateName(data.username || inputs.username);
 
-      // Navega para o dashboard sem permitir voltar atrás na pilha do browser
-      navigate("/dashboard", { replace: true });
+      // REGRAS DE NAVEGAÇÃO:
+      // Usamos o navigate para o DASHBOARD, não para o login novamente
+      navigate("/Dashboard", { replace: true });
+
     } catch (err) {
-      // Captura o erro lançado pelo serviço e mostra ao utilizador
       setError(err.message);
     }
   };

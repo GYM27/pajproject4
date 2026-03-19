@@ -19,8 +19,18 @@ export const loginUser = async (credentials) => {
       throw new Error("Erro no servidor. Tente mais tarde.");
     }
 
-    // Se OK, devolve os dados (Token e Username)
-    return await response.json();
+    // 1. Captura o token que o Java enviou no Header chamado "token"
+    const token = response.headers.get("token");
+
+    // 2. Captura os dados do perfil (username, etc.) que vêm no corpo da resposta
+    const data = await response.json();
+
+    // 3. Devolve um objeto único com tudo.
+    // Se o token vier no header, ele é adicionado ao resultado.
+    return {
+      ...data,
+      token: token || data.token // Tenta ler do header, se não houver, tenta do corpo
+    };
   } catch (error) {
     // Em vez de apenas 'throw error', vamos analisar a falha
     console.error("Erro na chamada de Login:", error.message);
