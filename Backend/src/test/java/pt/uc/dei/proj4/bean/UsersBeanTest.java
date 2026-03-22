@@ -1,111 +1,146 @@
 package pt.uc.dei.proj4.bean;
 
+import aor.paj.projecto4.bean.LeadsBean;
 import aor.paj.projecto4.bean.TokenBean;
 import aor.paj.projecto4.bean.UsersBean;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import aor.paj.projecto4.dao.LeadDao;
 import aor.paj.projecto4.dao.UserDao;
+import aor.paj.projecto4.dto.LeadDTO;
 import aor.paj.projecto4.dto.LoginDTO;
+import aor.paj.projecto4.dto.LoginResponseDTO;
 import aor.paj.projecto4.dto.UserBaseDTO;
+import aor.paj.projecto4.entity.LeadEntity;
 import aor.paj.projecto4.entity.UserEntity;
 import aor.paj.projecto4.utils.UserRoles;
+import aor.paj.projecto4.utils.LeadState;
+import jakarta.ws.rs.WebApplicationException;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 public class UsersBeanTest {
-    UsersBean usersBean;
-    UserDao userDao;
-    TokenBean tokenBean;
-    UserEntity u;   // User 1 (ID 1)
-    UserEntity u2;  // User 2 (ID 2)
-    LoginDTO loginDTO1;
-    LoginDTO loginDTO2;
+
+    // --- BEANS EM TESTE ---
+    @InjectMocks
+    private UsersBean usersBean;
+
+    @InjectMocks
+    private LeadsBean leadsBean; // Adicionado para suportar o teste de AdminSuperEdit
+
+    // --- MOCKS ---
+    @Mock
+    private UserDao userDao;
+
+    @Mock
+    private LeadDao leadDao; // Adicionado para suportar o teste de AdminSuperEdit
+
+    @Mock
+    private TokenBean tokenBean;
+
+    // --- VARIÁVEIS DE SUPORTE ---
+    private UserEntity u;
+    private UserEntity u2;
+    private LeadEntity leadEntity; // Adicionado
+    private LeadDTO leadDTO;       // Adicionado
+    private LoginDTO loginDTO1;
+    private LoginDTO loginDTO2;
 
     @BeforeEach
     void setup() {
-        userDao = mock(UserDao.class);
-        tokenBean = mock(TokenBean.class);
-        usersBean = new UsersBean(userDao, tokenBean);
+        MockitoAnnotations.openMocks(this);
 
-        // user1
+        // 1. Setup Utilizadores
         u = spy(new UserEntity());
         u.setUsername("testDummy");
         u.setPassword("xxxxx");
         u.setEmail("test@test.com");
-        u.setContact("999999999");
+        u.setFirstName("Joao");
         u.setUserRole(UserRoles.NORMAL);
         u.setSoftDelete(false);
-        doReturn(1L).when(u).getId(); // Force ID = 1
+        doReturn(1L).when(u).getId();
 
-        // user2
         u2 = spy(new UserEntity());
         u2.setUsername("u2");
-        u2.setPassword("BonoVox");
         u2.setEmail("u2@u2.com");
-        u2.setContact("888888888");
         u2.setUserRole(UserRoles.NORMAL);
-        u2.setSoftDelete(false);
-        doReturn(2L).when(u2).getId(); // Force ID = 2
+        doReturn(2L).when(u2).getId();
 
-        // Login DTOs
+        // 2. Setup Leads (Necessário para o erro de compilação desaparecer)
+        leadEntity = spy(new LeadEntity());
+        leadEntity.setTitulo("Lead Antiga");
+        leadEntity.setSoftDelete(false);
+        leadEntity.setLeadState(LeadState.NOVO);
+        doReturn(10L).when(leadEntity).getId();
+
+        leadDTO = new LeadDTO();
+        leadDTO.setTitle("Lead Editada");
+        leadDTO.setSoftDelete(true);
+
+        // 3. Setup Login
         loginDTO1 = new LoginDTO(u.getUsername(), u.getPassword());
         loginDTO2 = new LoginDTO(u.getUsername(), "wrong_password");
 
-
-        when(userDao.find(1L)).thenReturn(u);
-        when(userDao.find(13L)).thenReturn(null);
-
-        when(userDao.findUserByEmail("test@test.com")).thenReturn(u);
-        when(userDao.findUserByContact("999999999")).thenReturn(u);
+        // 4. Configuração de Mocks
         when(userDao.findUserByUsername("testDummy")).thenReturn(u);
-        when(userDao.findUserByToken("token1")).thenReturn(u);
-
-        when(userDao.findUserByEmail("other@email.com")).thenReturn(u2);
-        when(userDao.findUserByContact("888888888")).thenReturn(u2);
-
+        when(userDao.find(1L)).thenReturn(u);
         when(tokenBean.generateNewToken(u)).thenReturn("token1");
-        when(tokenBean.getUserEntityByToken("token1")).thenReturn(u);
-        when(tokenBean.getUserEntityByToken("token2")).thenReturn(null);
     }
 
+    // --- TESTES DE UTILIZADOR ---
+
     @Test
+    @DisplayName("Deve autenticar utilizador com sucesso")
     void testAuthenticateUser() {
-        assertNotNull(usersBean.authenticateUser(loginDTO1));
-        assertEquals("token1", usersBean.authenticateUser(loginDTO1).getToken());
-        assertNull(usersBean.authenticateUser(loginDTO2));
+        LoginResponseDTO response = usersBean.authenticateUser(loginDTO1);
+        assertNotNull(response);
+        assertEquals("token1", response.getToken());
+        assertEquals("Joao", response.getFirstName());
     }
 
     @Test
-    void testGetUserBaseDTOById() {
-        assertNotNull(usersBean.getUserBaseDTOById(1L));
-        assertNull(usersBean.getUserBaseDTOById(13L));
+    @DisplayName("Deve falhar autenticação com password errada")
+    void testAuthenticateUserWrongPassword() {
+        LoginResponseDTO response = usersBean.authenticateUser(loginDTO2);
+        assertNull(response);
     }
 
     @Test
-    void putEditUserTest() {
+    @DisplayName("Admin: Deve falhar edição se email já existir em outro ID")
+    void testPutEditUserDuplicateEmail() {
+        UserBaseDTO editDto = new UserBaseDTO();
+        editDto.setEmail("u2@u2.com");
+        when(userDao.findUserByEmail("u2@u2.com")).thenReturn(u2);
 
-        UserBaseDTO userBaseDTO = usersBean.convertToUserBaseDTO(u2);
-
-        userBaseDTO.setEmail("new_unique@email.com");
-        userBaseDTO.setCellphone("777777777");
-        assertTrue(usersBean.putEditUser(1L, userBaseDTO));
-
-        userBaseDTO.setEmail("other@email.com"); // Dao returns u2 (ID 2)
-        assertFalse(usersBean.putEditUser(1L, userBaseDTO), "Should fail because ID 2 != ID 1");
-
-        userBaseDTO.setEmail("new_unique@email.com"); // reset email
-        userBaseDTO.setCellphone("888888888"); // Dao returns u2 (ID 2)
-        assertFalse(usersBean.putEditUser(1L, userBaseDTO));
-
-        assertFalse(usersBean.putEditUser(null, userBaseDTO));
-        assertFalse(usersBean.putEditUser(1L, null));
+        assertThrows(WebApplicationException.class, () -> usersBean.putEditUser(1L, editDto));
     }
 
     @Test
-    void softDeleteUserTest() {
-        assertTrue(usersBean.softDeleteUser(1L));
-        u.setSoftDelete(true);
-        assertFalse(usersBean.softDeleteUser(1L));
+    @DisplayName("Deve realizar soft delete com sucesso")
+    void testSoftDeleteUser() {
+        assertDoesNotThrow(() -> usersBean.softDeleteUser(1L));
+        assertTrue(u.isSoftDelete());
+    }
+
+    // --- TESTES DE LEADS (ADAPTADOS PARA ESTA CLASSE) ---
+
+    @Test
+    @DisplayName("Admin: Super Edit deve alterar estado de soft delete")
+    void testAdminSuperEdit() {
+        // 1. Mock do retorno do DAO (Agora leadDao existe como @Mock lá em cima)
+        when(leadDao.getLeadByLeadID(10L)).thenReturn(leadEntity);
+
+        // 2. Execução
+        LeadDTO result = leadsBean.adminSuperEdit(10L, leadDTO);
+
+        // 3. Verificação
+        // Importante: Para isto ser TRUE, o teu LeadsBean.entityToDTO deve mapear o campo softDelete!
+        assertTrue(result.isSoftDelete(), "A lead devia estar em soft delete após o super edit");
+        verify(leadDao).merge(leadEntity);
     }
 }

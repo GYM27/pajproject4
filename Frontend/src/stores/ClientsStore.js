@@ -1,58 +1,34 @@
 import { create } from "zustand";
+import api from "../services/api"; // Importa o motor central
 
-export const useClientStore = create((set, get) => ({
-  // --- ESTADO (CAMPOS DE MEMÓRIA) ---
+export const useClientStore = create((set) => ({
+  // --- ESTADO ---
   clients: [],
   loading: false,
   error: null,
 
-  // --- AÇÕES (LÓGICA DE NEGÓCIO) ---
+  // --- AÇÕES ---
 
-  // 1. Carregar Clientes do Utilizador (GET /me)
+  // 1. Carregar Clientes (GET /clients)
   fetchMyClients: async () => {
+    // Otimização: Só carrega se a lista estiver vazia para evitar pedidos duplos do StrictMode
     set({ loading: true, error: null });
     try {
-      const response = await fetch(
-        "http://localhost:8080/LuisF-proj4/rest/clients",
-        {
-          method: "GET",
-          headers: {
-            Accept: "application/json",
-            token: localStorage.getItem("token"),
-          },
-        },
-      );
-
-      if (!response.ok) throw new Error("Erro ao carregar clientes");
-
-      const data = await response.json();
+      // O api.js já conhece a BASE_URL e injeta o token
+      const data = await api("/clients");
       set({ clients: data, loading: false });
     } catch (err) {
       set({ error: err.message, loading: false });
     }
   },
 
-  // 2. Adicionar Cliente (POST)
+  // 2. Adicionar Cliente (POST /clients)
   addClient: async (clientDto) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(
-        "http://localhost:8080/LuisF-proj4/rest/clients",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            token: localStorage.getItem("token"),
-          },
-          body: JSON.stringify(clientDto),
-        },
-      );
+      const newClient = await api("/clients", "POST", clientDto);
 
-      if (!response.ok) throw new Error("Dados inválidos ou erro no servidor");
-
-      const newClient = await response.json();
-
-      // ATUALIZAÇÃO IMUTÁVEL: Adiciona o novo cliente à lista existente
+      // Atualização Imutável: Adiciona ao array local para refletir no UI sem novo fetch
       set((state) => ({
         clients: [...state.clients, newClient],
         loading: false,
@@ -64,27 +40,13 @@ export const useClientStore = create((set, get) => ({
     }
   },
 
-  // 3. Editar Cliente (PUT)
+  // 3. Editar Cliente (PUT /clients/{id})
   updateClient: async (id, clientDto) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(
-        `http://localhost:8080/LuisF-proj4/rest/clients/${id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            token: localStorage.getItem("token"),
-          },
-          body: JSON.stringify(clientDto),
-        },
-      );
+      const updatedClient = await api(`/clients/${id}`, "PUT", clientDto);
 
-      if (!response.ok) throw new Error("Erro ao atualizar cliente");
-
-      const updatedClient = await response.json();
-
-      // ATUALIZAÇÃO IMUTÁVEL: Substitui apenas o cliente editado no array
+      // Substitui apenas o objeto editado
       set((state) => ({
         clients: state.clients.map((c) => (c.id === id ? updatedClient : c)),
         loading: false,
@@ -96,25 +58,21 @@ export const useClientStore = create((set, get) => ({
     }
   },
 
-  // 4. Soft Delete (POST /{id}/delete)
+  // 4. Eliminar Cliente (DELETE /clients/{id})
   deleteClient: async (id) => {
+    set({ error: null });
     try {
-      const response = await fetch(
-        `http://localhost:8080/LuisF-proj4/rest/clients/${id}`,
-        {
-          method: "DELETE",
-          headers: { token: localStorage.getItem("token") },
-        },
-      );
+      // Se o servidor devolver 204 No Content, o api.js retorna true
+      await api(`/clients/${id}`, "DELETE");
 
-      if (!response.ok) throw new Error("Erro ao remover cliente");
-
-      // REMOÇÃO LOCAL: Filtra o cliente da lista para que ele desapareça do ecrã
+      // Remoção Local: Retira da lista imediatamente
       set((state) => ({
         clients: state.clients.filter((c) => c.id !== id),
       }));
+      return true;
     } catch (err) {
       set({ error: err.message });
+      return false;
     }
   },
 }));

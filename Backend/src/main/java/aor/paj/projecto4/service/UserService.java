@@ -5,15 +5,14 @@ import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import aor.paj.projecto4.bean.LoginBean;
 import aor.paj.projecto4.bean.UsersBean;
-//import pt.uc.dei.proj3.dto.RegisterDTO;
 import aor.paj.projecto4.dto.UserBaseDTO;
 import aor.paj.projecto4.dto.UserDTO;
-
 import java.util.List;
 
-
+/**
+ * Serviço unificado para gestão de Utilizadores (Perfil e Administração).
+ */
 @Path("/users")
 public class UserService {
 
@@ -21,26 +20,34 @@ public class UserService {
     UsersBean usersBean;
 
     @Inject
-    private LoginBean loginBean;
-    @Inject
     UserVerificationBean verifier;
 
+    // =========================================================================
+    // SEÇÃO DE UTILIZADOR COMUM (Perfil Próprio e Registo)
+    // =========================================================================
 
     /**
-     * Devolve o json UserBaseDTO correspondente a um utilizador identificado por id
-     * @param token      token to utilizador
-     * @return json do UserBaseDTO ou mensagem de erro
+     * Regista um novo utilizador no sistema.
+     * URL: POST /users/register
+     */
+    @POST
+    @Path("/register")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response registerUser(@Valid UserDTO user) {
+        usersBean.registerUser(user);
+        return Response.status(Response.Status.CREATED).build();
+    }
+
+    /**
+     * Retorna o perfil completo do próprio utilizador (via token).
+     * URL: GET /users/me
      */
     @GET
     @Path("/me")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getUser(
-            @HeaderParam("token") String token) {
-
-        //validar o utilizador
+    public Response getMyProfile(@HeaderParam("token") String token) {
         verifier.verifyUser(token);
-
-        //funcionalidade
         UserDTO user = usersBean.getUserDTOByToken(token);
         if (user == null) {
             return Response.status(Response.Status.NOT_FOUND).build();
@@ -49,203 +56,105 @@ public class UserService {
     }
 
     /**
-     * Regista um novo utilizador
-     *
-     * @param user
-     * @return Json do novo user, mensagem de sucesso ou erro
-     */
-    @POST
-    @Path("/register")
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response registerUser(@Valid UserDTO user) {
-        boolean created = usersBean.registerUser(user);
-        if (created) {
-            return Response.status(Response.Status.CREATED).build();//201
-        } else {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Username already exists or invalid data")
-                    .build(); //400
-        }
-    }
-
-    /**
-     * Edita um utilizador através de um put. De momento ignora leads,projetos, clients
-     * @param token       do user a editar
-     * @param userDTO o DTO com as novas informações do user
-     * @return json do editDTO, mensagem de sucesso ou de erro
+     * Edita o perfil do próprio utilizador (via token).
+     * URL: PUT /users/me
      */
     @PUT
     @Path("/me")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-
-    public Response putEditUser(
-            //@PathParam("id") Long resourceId,
-            @HeaderParam("token") String token,
-            @Valid UserDTO userDTO) {
-
-        //validar o utilizador
+    public Response putEditMyProfile(@HeaderParam("token") String token, @Valid UserDTO userDTO) {
         verifier.verifyUser(token);
-
-        //funcionalidade
-        boolean success = usersBean.putEditOwnUser(token, userDTO);
-
-        if (success) {
-            return Response.ok(userDTO).build();
-        } else {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Erro ao atualizar o perfil.")
-                    .build();
-        }
+        usersBean.putEditOwnUser(token, userDTO);
+        return Response.ok(userDTO).build();
     }
 
-    //*********************************************Admin Section***************************************
+    // =========================================================================
+    // SEÇÃO DE ADMINISTRADOR (Gestão de Terceiros)
+    // =========================================================================
 
     /**
-     * Desativa(softdeletes) um utilizador só pode ser feito pelo admin
-     *
-     * @param resourceId o id do user a inativar
-     * @param token      o token do administrador
-     * @return a resposta da ação
-     */
-    @POST
-    @Path("/admin/{id}/softdelete")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response deactivateUser(
-            @PathParam("id") Long resourceId,
-            @HeaderParam("token") String token
-    ) {
-        //verificar se o utilizador é válide e é um admin
-        verifier.verifyAdmin(token);
-        boolean sucess = usersBean.softDeleteUser(resourceId);
-        if (sucess) {
-            return Response.ok("Utilizador desativado.").build();
-        } else {
-            return Response.status(Response.Status.NOT_FOUND).build();
-        }
-    }
-
-    /**
-     * Reativa(softUndeletes) um utilizador só pode ser feito pelo admin
-     * @param resourceId o id do user a reativar
-     * @param token      o token do administrador
-     * @return a resposta da ação
-     */
-    @POST
-    @Path("/admin/{id}/softundelete")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response reActivateUser(
-            @PathParam("id") Long resourceId,
-            @HeaderParam("token") String token
-    ) {
-        //verificar se o utilizador é válide e é um admin
-        verifier.verifyAdmin(token);
-        boolean sucess = usersBean.softUnDeleteUser(resourceId);
-        if (sucess) {
-            return Response.ok("Utilizador reativado.").build();
-        } else {
-            return Response.status(Response.Status.NOT_FOUND).build();
-        }
-    }
-
-    /**
-     * Apaga permanentemente um utilizador só pode ser feito pelo admin
-     * @param resourceId o id do user a apagar permanentemente
-     * @param token      o token do administrador
-     * @return a resposta da ação
-     */
-    @DELETE
-    @Path("/admin/{id}")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response deleteUser(
-            @PathParam("id") Long resourceId,
-            @HeaderParam("token") String token
-    ) {
-        //verificar se o utilizador é válido e é um admin
-        verifier.verifyAdmin(token);
-
-        boolean sucess = usersBean.deleteUser(resourceId);
-        if (sucess) {
-            return Response.ok("Utilizador apagado.").build();
-        } else {
-            return Response.status(Response.Status.NOT_FOUND).build();
-        }
-    }
-
-    /**
-     * Devolve o DTO de um utilizador ao administrador
-     * @param token o token do admin
-     * @return o json de DTOs dos users
+     * Lista todos os utilizadores (apenas Admin).
+     * URL: GET /users
      */
     @GET
-    @Path("/admin/{id}")
-    @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getUser(
-            @PathParam("id") Long resourceId,
-            @HeaderParam("token") String token
-    ) {
-        //verificar se o utilizador é válido e é um admin
+    public Response getAllUsers(@HeaderParam("token") String token) {
         verifier.verifyAdmin(token);
+        List<UserBaseDTO> users = usersBean.getAllUsers();
+        return Response.ok(users).build();
+    }
 
-        //funcionalidade
-        UserBaseDTO u = usersBean.getUserBaseDTOById(resourceId);
-
-        //resposta
+    /**
+     * Obtém um utilizador específico por ID (apenas Admin).
+     * URL: GET /users/{id}
+     */
+    @GET
+    @Path("/{id}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getUserById(@PathParam("id") Long id, @HeaderParam("token") String token) {
+        verifier.verifyAdmin(token);
+        UserBaseDTO u = usersBean.getUserBaseDTOById(id);
         if (u == null) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
         return Response.ok(u).build();
-
     }
 
     /**
-     * Devolve o DTO de todos os utilizadores ao administrador
-     * @param token o token do admin
-     * @return o json de DTOs dos users
+     * Edita qualquer utilizador por ID (apenas Admin).
+     * URL: PUT /users/{id}
      */
-    @GET
-    @Path("/admin")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getAllUsers(
-            @HeaderParam("token") String token
-    ) {
-        //verificar se o utilizador é válido e é um admin
-        verifier.verifyAdmin(token);
-        //devolver os utilizadores
-        List<UserBaseDTO> users = usersBean.getAllUsersButAdmin(token);
-        if (users == null) {
-            return Response.serverError().entity("Erro ao aceder à base de dados").build();
-        }
-        return Response.ok(users).build();
-    }
-
-
     @PUT
-    @Path("/admin/{id}")
+    @Path("/{id}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public Response adminPutEditUser(
-            @PathParam("id") Long resourceId,
+    public Response adminEditUser(
+            @PathParam("id") Long id,
             @HeaderParam("token") String token,
             @Valid UserBaseDTO userBaseDTO) {
 
-        //validar o utilizador
         verifier.verifyAdmin(token);
-
-        //funcionalidade
-        boolean success = usersBean.putEditUser(resourceId, userBaseDTO);
-
-        if (success) {
-            return Response.ok(userBaseDTO).build();
-        } else {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Erro ao atualizar o perfil.")
-                    .build();
-        }
+        usersBean.putEditUser(id, userBaseDTO);
+        return Response.ok(userBaseDTO).build();
     }
 
+    /**
+     * Desativa um utilizador (Soft Delete).
+     * URL: PATCH /users/{id}/deactivate
+     */
+    @PATCH
+    @Path("/{id}/deactivate")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response deactivateUser(@PathParam("id") Long id, @HeaderParam("token") String token) {
+        verifier.verifyAdmin(token);
+        usersBean.softDeleteUser(id);
+        return Response.ok("{\"message\":\"Utilizador desativado.\"}").build();
+    }
+
+    /**
+     * Reativa um utilizador.
+     * URL: PATCH /users/{id}/activate
+     */
+    @PATCH
+    @Path("/{id}/activate")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response activateUser(@PathParam("id") Long id, @HeaderParam("token") String token) {
+        verifier.verifyAdmin(token);
+        usersBean.softUnDeleteUser(id);
+        return Response.ok("{\"message\":\"Utilizador reativado.\"}").build();
+    }
+
+    /**
+     * Remove permanentemente e reatribui leads ao user 999.
+     * URL: DELETE /users/{id}
+     */
+    @DELETE
+    @Path("/{id}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response deleteUser(@PathParam("id") Long id, @HeaderParam("token") String token) {
+        verifier.verifyAdmin(token);
+        usersBean.deleteUser(id);
+        return Response.ok("{\"message\":\"Utilizador removido permanentemente.\"}").build();
+    }
 }

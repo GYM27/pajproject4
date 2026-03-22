@@ -1,121 +1,83 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { Button, Card, Table, Badge } from "react-bootstrap";
+import React, { useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button, Container, Row, Col, Badge, Spinner } from "react-bootstrap";
+import { useLeadStore } from "../stores/LeadsStore";
+import "../App.css"; // Uso o ficheiro de estilos que já tem os meus cards
 
 const Leads = () => {
-  const [leads, setLeads] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { leads, loading, fetchMyLeads } = useLeadStore();
   const navigate = useNavigate();
 
-  // Captura o ?state=X do URL (enviado pelo Dashboard)
-  const query = new URLSearchParams(useLocation().search);
-  const filterState = query.get("state");
-
-  const fetchLeads = useCallback(async () => {
-    const token = localStorage.getItem("token");
-    try {
-      const response = await fetch(
-        "http://localhost:8080/LuisF-proj4/rest/users/me/leads",
-        {
-          method: "GET",
-          headers: {
-            Accept: "application/json",
-            token: token,
-          },
-        },
-      );
-
-      if (response.ok) {
-        let data = await response.json();
-
-        if (filterState) {
-          data = data.filter((l) => l.state === parseInt(filterState));
-        }
-        setLeads(data);
-      }
-    } catch (err) {
-      console.error("Erro ao procurar leads", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [filterState]);
-
   useEffect(() => {
-    fetchLeads();
-  }, [fetchLeads]);
+    fetchMyLeads();
+  }, [fetchMyLeads]);
 
-  // Função auxiliar para dar cor aos badges (igual ao teu Java Enum)
-  const getStateBadge = (state) => {
-    const states = {
-      1: { text: "Novo", variant: "primary" },
-      2: { text: "Em Análise", variant: "warning" },
-      3: { text: "Proposta", variant: "info" },
-      4: { text: "Ganho", variant: "success" },
-      5: { text: "Perdido", variant: "danger" },
+  const getStateStyle = (state) => {
+    const styles = {
+      1: { label: "Novo", color: "#007bff" },
+      2: { label: "Em Análise", color: "#ffc107" },
+      3: { label: "Proposta", color: "#17a2b8" },
+      4: { label: "Ganho", color: "#28a745" },
+      5: { label: "Perdido", color: "#dc3545" },
     };
-    return states[state] || { text: "Desconhecido", variant: "secondary" };
+    return styles[state] || { label: "Outro", color: "#6c757d" };
   };
 
   return (
-    <div className="container-fluid">
+    <Container className="mt-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2>
-          {filterState
-            ? `Leads: ${getStateBadge(filterState).text}`
-            : "Todas as Leads"}
-        </h2>
+        <h2 className="fw-bold">Gestão de Oportunidades</h2>
         <Button variant="primary" onClick={() => navigate("/leads/new")}>
           + Nova Lead
         </Button>
       </div>
 
-      <Card className="shadow-sm border-0">
-        <Card.Body>
-          <Table hover responsive>
-            <thead className="table-light">
-              <tr>
-                <th>Título</th>
-                <th>Cliente / Contacto</th>
-                <th>Estado</th>
-                <th>Data Criação</th>
-                <th>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {leads.length > 0 ? (
-                leads.map((lead) => (
-                  <tr key={lead.id} style={{ cursor: "pointer" }}>
-                    <td className="fw-bold">{lead.title}</td>
-                    <td>{lead.clientName || "N/A"}</td>
-                    <td>
-                      <Badge bg={getStateBadge(lead.state).variant}>
-                        {getStateBadge(lead.state).text}
-                      </Badge>
-                    </td>
-                    <td>{new Date(lead.createdAt).toLocaleDateString()}</td>
-                    <td>
-                      <Button
-                        variant="outline-secondary"
-                        size="sm"
-                        onClick={() => navigate(`/leads/${lead.id}`)}
-                      >
-                        Ver Detalhes
-                      </Button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="5" className="text-center py-4 text-muted">
-                    {loading ? "A carregar..." : "Nenhuma lead encontrada."}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </Table>
-        </Card.Body>
-      </Card>
-    </div>
+      {loading ? (
+        <div className="text-center p-5">
+          <Spinner animation="border" />
+        </div>
+      ) : (
+        <Row className="g-4">
+          {leads.map((lead) => {
+            const style = getStateStyle(lead.state);
+            return (
+              <Col key={lead.id} md={6} lg={4}>
+                {/* Reaproveito a classe clientes-card que criei para manter a consistência */}
+                <div
+                  className="clientes-card p-3 shadow-sm h-100"
+                  style={{ borderLeft: `5px solid ${style.color}` }}
+                  onClick={() => navigate(`/leads/${lead.id}`)}
+                >
+                  <div className="d-flex justify-content-between align-items-start">
+                    <h5 className="fw-bold text-dark mb-1">{lead.title}</h5>
+                    <Badge style={{ backgroundColor: style.color }}>
+                      {style.label}
+                    </Badge>
+                  </div>
+
+                  <p className="text-muted small mb-3">
+                    {lead.description?.substring(0, 80)}...
+                  </p>
+
+                  <div className="mt-auto pt-3 border-top d-flex justify-content-between align-items-center">
+                    <span className="small text-secondary">
+                      <i className="bi bi-calendar3 me-1"></i>
+                      {new Date(lead.createdAt).toLocaleDateString()}
+                    </span>
+                    <Button
+                      variant="link"
+                      className="p-0 text-primary fw-bold text-decoration-none"
+                    >
+                      Ver detalhes
+                    </Button>
+                  </div>
+                </div>
+              </Col>
+            );
+          })}
+        </Row>
+      )}
+    </Container>
   );
 };
 

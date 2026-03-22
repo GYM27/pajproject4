@@ -29,8 +29,6 @@ public class ClientsBean {
     @Inject
     UserDao userDao;
 
-    @PersistenceContext(unitName = "project3PU")
-    private EntityManager em;
 
     public ClientsBean() {
             }
@@ -90,7 +88,7 @@ public class ClientsBean {
         // 3. Persiste na Base de Dados
         // Se o email for duplicado para este owner, a BD lança uma exceção.
         // O GenericExceptionMapper apanha e envia o ErrorResponse(409/400)
-        em.persist(newClient);
+        clientsDao.persist(newClient);
 
         // 4. Retorna o DTO com o ID que a base de dados acabou de gerar
         return toDTO(newClient);
@@ -98,7 +96,7 @@ public class ClientsBean {
 
     public ClientsDTO editClient(Long clientId, ClientsDTO dto) {
         // 1. Procura a entidade existente
-        ClientsEntity client = em.find(ClientsEntity.class, clientId);
+        ClientsEntity client = clientsDao.find(clientId);
 
         // 2. Valida se o cliente existe e não está na lixeira
         if (client == null || client.isSoftDelete()) {
@@ -110,6 +108,8 @@ public class ClientsBean {
         client.setEmail(dto.getEmail());
         client.setPhone(dto.getPhone());
         client.setOrganization(dto.getOrganization());
+
+        clientsDao.merge(client);
 
         // 4. Converte para DTO e devolve
         // Se houver conflito de email na BD, o GenericExceptionMapper envia o erro 409
@@ -173,24 +173,30 @@ public class ClientsBean {
     // --- MÉTODOS DE ELIMINAÇÃO/RESTAURO ---
 
     public ClientsDTO softDeleteClient(Long clientId) {
-        // 1. Procura a entidade na Base de Dados
-        ClientsEntity client = em.find(ClientsEntity.class, clientId);
-        // 2. Verificação de Existência e Estado
+        // Procura a entidade na Base de Dados
+        ClientsEntity client = clientsDao.find(clientId);
+        // Verificação de Existência e Estado
         // Se o cliente não existir ou já estiver apagado, lançamos 404.
         // O GenericExceptionMapper vai criar o ErrorResponse
         if (client == null || client.isSoftDelete()) {
             throw new WebApplicationException("Cliente nao encontrado");
         }
-        // 3. Execução da Operação
+        // Execução da Operação
         client.setSoftDelete(true);
-        // 4. Converte para DTO antes de devolver
+
+        // 4. Persistência Explícita (Crucial para o Teste Unitário)
+        // Chamamos o merge para que o Mockito no teste possa "ver" esta ação
+        clientsDao.merge(client);
+
+
+        // Converte para DTO antes de devolver
         return toDTO(client);
 
         // O Hibernate/JPA fará o flush automático para a BD no final da transação
     }
 
     public ClientsDTO restoreClient(Long clientId) {
-        ClientsEntity client = em.find(ClientsEntity.class, clientId);
+        ClientsEntity client = clientsDao.find(clientId);
         if (client == null) {
             throw new WebApplicationException("Cliente não encontrado", Response.Status.NOT_FOUND);
         }
@@ -200,13 +206,13 @@ public class ClientsBean {
         }
 
         client.setSoftDelete(false);
-
+        clientsDao.merge(client);
         return toDTO(client);
     }
 
     public ClientsDTO permanentDeleteClient(Long clientId) {
         // 1. Procura a entidade
-        ClientsEntity client = em.find(ClientsEntity.class, clientId);
+        ClientsEntity client = clientsDao.find(clientId);
 
         // 2. Valida existência
         if (client == null) {
@@ -222,7 +228,7 @@ public class ClientsBean {
         ClientsDTO dto = toDTO(client);
 
         // 5. REMOÇÃO FÍSICA da Base de Dados
-        em.remove(client);
+        clientsDao.remove(client);
 
         return dto;
     }
@@ -237,9 +243,11 @@ public class ClientsBean {
 
         UserEntity targetOwner = userDao.find(userId);
         if (targetOwner == null) throw new WebApplicationException(404);
+
         List<ClientsEntity> clients = clientsDao.findActiveByOwner(targetOwner);
         for (ClientsEntity c : clients) {
             c.setSoftDelete(true);
+            clientsDao.merge(c);
         }
     }
 
@@ -265,21 +273,18 @@ public class ClientsBean {
         // 4. Restaurar todos (O JPA faz o update automático no commit da transação)
         for (ClientsEntity c : deletedClients) {
             c.setSoftDelete(false);
+            clientsDao.merge(c);
         }
     }
 
     // --- UTILITÁRIOS ---
 
     public boolean isEmailDuplicated(String email, UserEntity owner) {
-        List<ClientsEntity> results = em.createNamedQuery("ClientsEntity.findByEmailAndOwner", ClientsEntity.class)
-                .setParameter("email", email)
-                .setParameter("owner", owner)
-                .getResultList();
-        return !results.isEmpty();
+        return clientsDao.isEmailDuplicated(email, owner);
     }
 
     public Long getOwnerIdOfClient(Long clientId) {
-        ClientsEntity client = em.find(ClientsEntity.class, clientId);
+        ClientsEntity client = clientsDao.find(clientId);
         if (client == null) throw new WebApplicationException(404);
         return client.getOwner().getId();
     }
@@ -310,6 +315,9 @@ public class ClientsBean {
         }
     }
 
+    /**
+     * Cria um cliente e atribui-o diretamente a um utilizador (Acesso Admin).
+     */
     public ClientsDTO createClientForUser(Long userId, ClientsDTO dto) {
         // 1. Procurar o utilizador alvo (Melhor usar o DAO específico de User)
         UserEntity targetOwner = userDao.find(userId);
@@ -323,7 +331,7 @@ public class ClientsBean {
         ClientsEntity newClient = toEntity(dto, targetOwner);
 
         // 4. Persistir (A BD valida a @UniqueConstraint email+owner)
-        em.persist(newClient);
+        clientsDao.persist(newClient);
 
         // 5. Devolver o DTO (Padrão profissional: devolve o que foi criado)
         return toDTO(newClient);

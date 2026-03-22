@@ -3,6 +3,7 @@ package aor.paj.projecto4.dao;
 import aor.paj.projecto4.entity.UserEntity;
 import jakarta.ejb.Stateless;
 import aor.paj.projecto4.entity.ClientsEntity;
+import jakarta.persistence.NoResultException;
 import jakarta.persistence.TypedQuery;
 
 import java.util.List;
@@ -71,6 +72,26 @@ public class ClientsDao extends AbstractDao<ClientsEntity> {
 
         // 5. Execução
         return query.getResultList();
+    }
+
+
+    // --- VALIDAÇÕES DE NEGÓCIO ---
+
+    /**
+     * Verifica se um email já existe para um determinado dono.
+     * Importante para evitar duplicados na carteira de um utilizador.
+     */
+    public boolean isEmailDuplicated(String email, UserEntity owner) {
+        try {
+            Long count = em.createQuery(
+                            "SELECT COUNT(c) FROM ClientsEntity c WHERE c.email = :email AND c.owner = :owner", Long.class)
+                    .setParameter("email", email)
+                    .setParameter("owner", owner)
+                    .getSingleResult();
+            return count > 0;
+        } catch (NoResultException e) {
+            return false;
+        }
     }
 }
 

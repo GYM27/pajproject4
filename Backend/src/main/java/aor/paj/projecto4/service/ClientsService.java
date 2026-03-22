@@ -22,6 +22,7 @@ public class ClientsService {
     // --- 1. OPERAÇÕES DE UTILIZADOR E DONO ---
 
     @POST
+    @Path("/")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response addClient(@HeaderParam("token") String token, @Valid ClientsDTO clientDto) {
@@ -36,6 +37,7 @@ public class ClientsService {
     }
 
     @GET
+    @Path("/")
     @Produces(MediaType.APPLICATION_JSON)
     public Response listClients(
             @HeaderParam("token") String token,

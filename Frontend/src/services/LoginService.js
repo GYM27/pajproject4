@@ -1,48 +1,60 @@
-// URL base baseada no teu ApplicationConfig.java e pom.xml do backend
-const API_URL = "http://localhost:8080/LuisF-proj4/rest/users/login";
+import api from './api';
 
+/**
+ * Serviço responsável por comunicar com o endpoint de autenticação.
+ * Utiliza o wrapper centralizado 'api' para gerir o fetch e o token.
+ */
 export const loginUser = async (credentials) => {
-  try {
-    const response = await fetch(API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(credentials),
-    });
+    try {
+        // 1. Fazemos o pedido POST para o endpoint /auth/login definido no Java
+        // Passamos as credenciais (username e password) que o Login.jsx nos deu
+        const data = await api("/auth/login", "POST", credentials);
 
-    // Verificação manual do status da resposta (importante para REST)
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error("Utilizador ou password incorretos.");
-      }
-      throw new Error("Erro no servidor. Tente mais tarde.");
+        /** * 2. Se o login for bem-sucedido, o Java devolve o LoginResponseDTO:
+         * { id, firstName, userRole, token }
+         * Guardamos estas informações no localStorage para manter a sessão ativa.
+         */
+        if (data && data.token) {
+            localStorage.setItem("token", data.token);
+            localStorage.setItem("userName", data.firstName);
+            localStorage.setItem("userRole", data.userRole);
+        }
+
+        // 3. Devolvemos os dados para o componente React saber que pode avançar
+        return data;
+
+    } catch (error) {
+        // 4. Captura erros (ex: 401 Unauthorized do Java) e propaga-os para a UI
+        console.error("Erro no serviço de autenticação:", error.message);
+        throw error;
+    }
+}
+
+
+    /**
+ * Encerra a sessão do utilizador.
+ * Comunica com o Backend para invalidar o token e limpa os dados locais.
+ */
+export const logoutUser = async () => {
+
+     // 1. Recuperamos o token para enviar no pedido
+        const token = localStorage.getItem("token");
+    try {
+        if (token) {
+        // 2. Chamamos o endpoint de logout. 
+        // O api.js enviará o token no header automaticamente.
+        await api("/auth/logout", "POST");
+        console.log("Token invalidado com sucesso no servidor.");
+        }
+
+    } catch (error) {
+        // Mesmo que a rede falhe, queremos limpar os dados locais
+        console.error("Erro ao invalidar token no servidor:", error.message);
+    } finally {
+        // 3. LIMPEZA TOTAL: Acontece sempre, com ou sem sucesso na rede
+        localStorage.removeItem("token");
+        localStorage.removeItem("userName");
+        localStorage.removeItem("userRole");
     }
 
-    // 1. Captura o token que o Java enviou no Header chamado "token"
-    const token = response.headers.get("token");
-
-    // 2. Captura os dados do perfil (username, etc.) que vêm no corpo da resposta
-    const data = await response.json();
-
-    // 3. Devolve um objeto único com tudo.
-    // Se o token vier no header, ele é adicionado ao resultado.
-    return {
-      ...data,
-      token: token || data.token // Tenta ler do header, se não houver, tenta do corpo
-    };
-  } catch (error) {
-    // Em vez de apenas 'throw error', vamos analisar a falha
-    console.error("Erro na chamada de Login:", error.message);
-
-    // Se o erro for de rede (ex: Wildfly desligado), o 'fetch' lança TypeError
-    if (error.message === "Failed to fetch") {
-      throw new Error(
-        "Não foi possível ligar ao servidor. Verifique se o backend está a correr.",
-      );
-    }
-
-    // Re-lançamos o erro já "tratado" ou com a mensagem correta para o componente
-    throw error;
-  }
 };

@@ -1,6 +1,7 @@
 package aor.paj.projecto4.service;
 
 import jakarta.inject.Inject;
+import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -8,36 +9,46 @@ import aor.paj.projecto4.bean.LoginBean;
 import aor.paj.projecto4.dto.LoginDTO;
 import aor.paj.projecto4.dto.LoginResponseDTO;
 
-@Path("/users")
+/**
+ * Serviço dedicado à Autenticação.
+ * Separamos do UserService para manter a lógica de sessão isolada.
+ */
+@Path("/auth")
 public class LoginService {
+
     @Inject
     LoginBean loginBean;
 
+    /**
+     * Realiza o login e devolve o token de acesso.
+     * URL: POST /auth/login
+     */
     @POST
     @Path("/login")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public Response login(LoginDTO loginDTO) {
-
-            LoginResponseDTO loginResponseDTO= loginBean.login(loginDTO);
-
-            if(loginResponseDTO!=null){
-                return Response.ok(loginResponseDTO).build();
-            }else{
-                return Response.status(Response.Status.UNAUTHORIZED).build();
-            }
-
+    public Response login(@Valid LoginDTO loginDTO) { // Adicionado @Valid!
+        // O Bean agora lança WebApplicationException se falhar
+        LoginResponseDTO loginResponseDTO = loginBean.login(loginDTO);
+        return Response.ok(loginResponseDTO).build();
     }
 
-    //logout
+    /**
+     * Finaliza a sessão invalidando o token.
+     * URL: POST /auth/logout
+     */
     @POST
     @Path("/logout")
-    public Response logout(@HeaderParam("token") String token){
-         //é capaz de ser overkill usar um boolean, mas mais future proof?
-        if (loginBean.logout(token)) {
-            return Response.noContent().build(); // 204
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response logout(@HeaderParam("token") String token) {
+        // Invalidar o token no Bean/Dao
+        boolean success = loginBean.logout(token);
+
+        if (success) {
+            return Response.noContent().build(); // 204: Sucesso sem corpo
         } else {
-            return Response.ok("Session already expired").build(); // 200
+            // Se o token já não era válido, retornamos 200 avisando o cliente
+            return Response.ok("{\"message\":\"Sessão já se encontrava expirada.\"}").build();
         }
     }
 }

@@ -6,7 +6,6 @@ import aor.paj.projecto4.dao.TokenDao;
 import aor.paj.projecto4.entity.TokenEntity;
 import aor.paj.projecto4.entity.UserEntity;
 import aor.paj.projecto4.utils.UserRoles;
-
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -20,79 +19,58 @@ public class TokenBean implements Serializable {
     @Inject
     TokenDao tokenDao;
 
-    public String generateNewToken(UserEntity owner){
+    /**
+     * Gera um novo token. A validade (8h) e datas são tratadas pelo @PrePersist da Entity.
+     */
+    public String generateNewToken(UserEntity owner) {
         String randomValue = UUID.randomUUID().toString();
         TokenEntity newToken = new TokenEntity();
         newToken.setTokenValue(randomValue);
         newToken.setOwner(owner);
+
         tokenDao.persist(newToken);
         return randomValue;
     }
 
-    public boolean invalidateToken(String token){
-        //se o token foi invalidado pelo menos uma linha foi alterada
-        int result = tokenDao.invalidateToken(token);
-        return result > 0;
-    }
-
     /**
-     * Verifica se um token existe, está ativo e se não devia ter já expirado
-     * @param tokenValue o token que estamos a tentar validar
-     * @return true se todas as condições são cumpridas, false se falha qualquer uma delas
+     * Valida se o token existe, está ativo e dentro do prazo de expiração.
      */
     public boolean isTokenValid(String tokenValue) {
+        if (tokenValue == null || tokenValue.isEmpty()) return false;
+
         TokenEntity token = tokenDao.findToken(tokenValue);
 
-        //primeiro verificar se não existe ou se não está ativo
+        // 1. Verifica existência e estado booleano
         if (token == null || !token.isActive()) {
             return false;
         }
 
-        //depois verificar se já devia ter expirado
+        // 2. Verifica expiração temporal
         if (token.getExpiresAt().isBefore(LocalDateTime.now())) {
-            // Optional: Invalidate it now so it's "dead" immediately
-            invalidateToken(tokenValue);
+            invalidateToken(tokenValue); // "Mata" o token na base de dados
             return false;
         }
 
         return true;
     }
 
-    public Long getUserIdByToken(String token) {
-        // 1. Check if token is valid first (expiry, etc.)
-        if (!isTokenValid(token)) {
-            return null;
-        }
-        // 2. Ask the Dao for the owner's ID
-        return tokenDao.findUserIdByToken(token);
-    }
-
-    public UserEntity getUserEntityByToken(String token){
-        // 1. Check if token is valid first (expiry, etc.)
-        if (!isTokenValid(token)) {
-            return null;
-        }
-
+    public UserEntity getUserEntityByToken(String token) {
+        if (!isTokenValid(token)) return null;
         return tokenDao.findUserEntityByToken(token);
     }
 
-    public UserRoles getUserRoleByToken(String token){
-        UserEntity userEntity=getUserEntityByToken(token);
-        if(userEntity!=null){
-            return userEntity.getUserRole();
-        }
-        return null;
+    public UserRoles getUserRoleByToken(String token) {
+        UserEntity user = getUserEntityByToken(token);
+        return (user != null) ? user.getUserRole() : null;
     }
 
-    public boolean getUserSoftDelete(String token){
-        UserEntity userEntity=getUserEntityByToken(token);
-        if(userEntity!=null){
-            return userEntity.isSoftDelete();
-        }
-        return true;
+    public boolean getUserSoftDelete(String token) {
+        UserEntity user = getUserEntityByToken(token);
+        // Se não encontrar user ou o token for inválido, retornamos true (bloqueado)
+        return (user == null) || user.isSoftDelete();
     }
 
-
-
-
+    public boolean invalidateToken(String tokenValue) {
+        return tokenDao.invalidateToken(tokenValue) > 0;
+    }
 }

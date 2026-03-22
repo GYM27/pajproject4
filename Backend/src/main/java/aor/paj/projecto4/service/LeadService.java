@@ -1,19 +1,27 @@
 package aor.paj.projecto4.service;
 
-import aor.paj.projecto4.exception.ErrorResponse;
-import jakarta.inject.Inject;
-import jakarta.validation.Valid;
-import jakarta.ws.rs.*;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
+import java.util.List;
+
 import aor.paj.projecto4.bean.LeadsBean;
 import aor.paj.projecto4.bean.LoginBean;
 import aor.paj.projecto4.dto.LeadDTO;
+import aor.paj.projecto4.exception.ErrorResponse;
+import jakarta.inject.Inject;
+import jakarta.validation.Valid;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.HeaderParam;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 
-import java.util.ArrayList;
-import java.util.List;
-
-@Path("/users")
+@Path("leads")
 public class LeadService {
 
     @Inject
@@ -29,7 +37,7 @@ public class LeadService {
      * O uso de @Valid garante que campos vazios sejam travados pelo ValidationExceptionMapper.
      */
     @POST
-    @Path("/leads")
+    @Path("/")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response createLead(@HeaderParam("token") String token,
@@ -48,7 +56,7 @@ public class LeadService {
      * Utilizado tanto pela página de gestão de leads como pelo Dashboard para contagens.
      */
     @GET
-    @Path("/leads") // Seguindo a decisão de tirar o /me para ser igual a /clients
+    @Path("/") 
     @Produces(MediaType.APPLICATION_JSON)
     public Response getLeads(@HeaderParam("token") String token) {
 

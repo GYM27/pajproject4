@@ -2,14 +2,9 @@ package aor.paj.projecto4.dao;
 
 import jakarta.ejb.Stateless;
 import jakarta.persistence.NoResultException;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
-import aor.paj.projecto4.entity.LeadEntity;
+import jakarta.persistence.criteria.*;
 import aor.paj.projecto4.entity.TokenEntity;
 import aor.paj.projecto4.entity.UserEntity;
-
 import java.io.Serial;
 import java.io.Serializable;
 
@@ -19,95 +14,95 @@ public class UserDao extends AbstractDao<UserEntity> implements Serializable {
     private static final long serialVersionUID = 1L;
 
     public UserDao() {
-        // We pass UserEntity.class to the AbstractDao constructor
         super(UserEntity.class);
     }
 
-    //ir buscar um user por token usando Criteria API
-
     /**
-     * Ir buscar um user por token usando Criteria API
-     * @param tokenValue
-     * @return UserEntity
+     * Procura um utilizador através de um token ativo usando Criteria API.
      */
-    public UserEntity findUserByToken(String tokenValue){
+    public UserEntity findUserByToken(String tokenValue) {
+        CriteriaBuilder cb = em.getCriteriaBuilder();
+        CriteriaQuery<UserEntity> query = cb.createQuery(UserEntity.class);
+        Root<TokenEntity> tokenRoot = query.from(TokenEntity.class);
 
-        CriteriaBuilder cb= em.getCriteriaBuilder();
-
-        // 1. We want a User, but we are searching through Tokens
-        CriteriaQuery query= cb.createQuery(UserEntity.class);
-        Root<TokenEntity> tokenRoot=query.from(TokenEntity.class);
-
-        // 2. Define the path: Token -> Owner (the User)
+        // Selecionamos o Owner do Token
         query.select(tokenRoot.get("owner"));
 
-        // 3. Define the conditions (Predicates)
+        // Condições: Valor do token coincide e está marcado como ativo
         Predicate equalToken = cb.equal(tokenRoot.get("tokenValue"), tokenValue);
         Predicate isActive = cb.equal(tokenRoot.get("active"), true);
 
-        // 4. Combine and Execute
         query.where(cb.and(equalToken, isActive));
 
         try {
-            return (UserEntity) em.createQuery(query).getSingleResult();
+            return em.createQuery(query).getSingleResult();
         } catch (NoResultException e) {
             return null;
         }
     }
 
-    public UserEntity findUserByUsername(String username){
-        try{
-            return (UserEntity) em.createNamedQuery("User.findUserByUsername")
-                    .setParameter("username",username)
-                    .getSingleResult();
+    // --- Consultas via Named Queries (Definidas na UserEntity) ---
 
-        }catch(NoResultException e){
+    public UserEntity findUserByUsername(String username) {
+        try {
+            return em.createNamedQuery("User.findUserByUsername", UserEntity.class)
+                    .setParameter("username", username)
+                    .getSingleResult();
+        } catch (NoResultException e) {
             return null;
         }
     }
 
     public UserEntity findUserByEmail(String email) {
         try {
-            return (UserEntity) em.createNamedQuery("User.findUserByEmail").setParameter("email", email)
+            return em.createNamedQuery("User.findUserByEmail", UserEntity.class)
+                    .setParameter("email", email)
                     .getSingleResult();
-
         } catch (NoResultException e) {
             return null;
         }
     }
 
-    public UserEntity findUserByContact(String contact){
-        try{
-            return (UserEntity) em.createNamedQuery("User.findUserByContact").setParameter("contact",contact).getSingleResult();
+    public UserEntity findUserByContact(String contact) {
+        try {
+            return em.createNamedQuery("User.findUserByContact", UserEntity.class)
+                    .setParameter("contact", contact)
+                    .getSingleResult();
         } catch (NoResultException e) {
             return null;
         }
     }
 
+    /**
+     * Transfere em massa a posse de Leads e Clientes.
+     * É muito mais eficiente que fazer ciclos 'for' em Java.
+     */
+    public void transferOwnership(UserEntity oldOwner, UserEntity newOwner) {
+        // Atualiza as Leads
+        em.createQuery("UPDATE LeadEntity l SET l.owner = :newOwner WHERE l.owner = :oldOwner")
+                .setParameter("newOwner", newOwner)
+                .setParameter("oldOwner", oldOwner)
+                .executeUpdate();
+
+        // Atualiza os Clientes
+        em.createQuery("UPDATE ClientsEntity c SET c.owner = :newOwner WHERE c.owner = :oldOwner")
+                .setParameter("newOwner", newOwner)
+                .setParameter("oldOwner", oldOwner)
+                .executeUpdate();
+    }
+
+    /**
+     * Remove fisicamente o utilizador da base de dados.
+     * A reatribuição de dados deve ser chamada no Bean ANTES deste método.
+     */
     public boolean hardDelete(Long id) {
         UserEntity userEntity = em.find(UserEntity.class, id);
         if (userEntity != null) {
-            for (LeadEntity l : userEntity.getLeads()){
-                l.setOwner(null);
-            }
-              // adicionar este passo para eliminar o user mas manter os dados
-//            // 2. Desvincular todos os Clientes (Deixá-los órfãos)
-//            for (ClientsEntity c : userEntity.getClients()) {
-//                c.setOwner(null);
-//            }
-            //todo temos que fazer o mesmo para os clientes
+            // Como o UsersBean já chamou o transferOwnership,
+            // as listas de Leads e Clients já estarão vazias para este ID.
             em.remove(userEntity);
             return true;
         }
         return false;
     }
-
-    public UserEntity findUserById(Long id) {
-        try {
-            return em.find(UserEntity.class, id);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
 }

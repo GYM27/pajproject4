@@ -21,9 +21,9 @@ function Login() {
   const [error, setError] = useState(null);
 
   // Hooks de navegação e estado global
-  const userRole = useUserStore((state) => state.userRole);
+  const setUserRole = useUserStore((state) => state.setUserRole);
   const navigate = useNavigate();
-  const updateName = useUserStore((state) => state.updateName);
+  const setFirstName = useUserStore((state) => state.setFirstName);
 
   // Função para lidar com as alterações nos campos do formulário
   const handleChange = (event) => {
@@ -41,13 +41,15 @@ function Login() {
       // Se o serviço devolveu o token, guardamos no "baú" do browser
       if (data && data.token) {
         localStorage.setItem("token", data.token);
-        localStorage.setItem("userName", data.username || inputs.username);
+        localStorage.setItem("userName", data.firstName); // Guardamos o nome para mostrar no dashboard
+        localStorage.setItem("userRole", data.userRole); // Guardamos o papel do utilizador
 
         // LOG DE DEBUG: Abre a consola (F12) e vê se isto aparece
         console.log("Token guardado com sucesso:", data.token);
       }
-
-      updateName(data.username || inputs.username);
+      //Atualizamos o mural global (Zustand) com a nova função
+      setFirstName(data.firstName);
+      setUserRole(data.userRole);
 
       // REGRAS DE NAVEGAÇÃO:
       // Usamos o navigate para o DASHBOARD, não para o login novamente

@@ -1,4 +1,4 @@
-package aor.paj.projecto4.service;
+package aor.paj.projecto4.rest;
 
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerResponseContext;
@@ -9,12 +9,25 @@ import java.io.IOException;
 
 @Provider
 public class CorsFilter implements ContainerResponseFilter {
+
     @Override
-    public void filter(ContainerRequestContext requestContext, ContainerResponseContext responseContext) throws IOException {
-        responseContext.getHeaders().add("Access-Control-Allow-Origin", "*");
-        responseContext.getHeaders().add("Access-Control-Allow-Headers", "origin, content-type, accept, authorization, username, password, token");
+    public void filter(ContainerRequestContext requestContext,
+                       ContainerResponseContext responseContext) throws IOException {
+
+        // Permite o teu porto do Vite
+        responseContext.getHeaders().add("Access-Control-Allow-Origin", "http://localhost:5173");
+
+        // Permite os métodos que usas
+        responseContext.getHeaders().add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, HEAD");
+
+        // IMPORTANTE: Permite o header 'token' que criaste no api.js
+        responseContext.getHeaders().add("Access-Control-Allow-Headers", "origin, content-type, accept, authorization, token");
+
         responseContext.getHeaders().add("Access-Control-Allow-Credentials", "true");
-        responseContext.getHeaders().add("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD");
-        responseContext.getHeaders().add("Access-Control-Expose-Headers", "token");
+
+        // Se for um pedido OPTIONS (preflight), respondemos OK imediatamente
+        if (requestContext.getMethod().equalsIgnoreCase("OPTIONS")) {
+            responseContext.setStatus(200);
+        }
     }
 }

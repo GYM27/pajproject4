@@ -1,24 +1,16 @@
+import api from './api';
 
-
-const API_URL= "http://localhost:8080/LuisF-proj4/rest/users";
-
-export const userService= {
-
-    getMe: async ()=>{
-        const token = localStorage.getItem("token");
-
-        const response = await fetch(`${API_URL}/me`, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-                'token': token // Entrega a chave no cabeçalho, como o Java quer
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error("Erro ao comunicar com o servidor");
-        }
-
-        return await response.json(); // Devolve os dados prontos a usar
+/**
+ * Serviço para gestão de dados do utilizador.
+ */
+export const userService = {
+    /**
+     * Obtém os dados do perfil do utilizador autenticado através do endpoint /me.
+     * O wrapper 'api' injeta automaticamente o token do localStorage no Header.
+     */
+    getMe: async () => {
+        // Chamamos a API centralizada indicando apenas o caminho e o método.
+        // O tratamento de erros (401, 403, 500) já é feito pelo api.js.
+        return await api("/users/me", "GET");
     }
 };

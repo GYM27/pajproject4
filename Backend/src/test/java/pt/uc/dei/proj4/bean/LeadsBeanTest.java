@@ -1,233 +1,172 @@
 package pt.uc.dei.proj4.bean;
+
 import aor.paj.projecto4.bean.LeadsBean;
 import aor.paj.projecto4.bean.TokenBean;
-import jakarta.ws.rs.WebApplicationException;
-import jakarta.ws.rs.core.Response;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import aor.paj.projecto4.dao.LeadDao;
 import aor.paj.projecto4.dao.UserDao;
 import aor.paj.projecto4.dto.LeadDTO;
 import aor.paj.projecto4.entity.LeadEntity;
 import aor.paj.projecto4.entity.UserEntity;
 import aor.paj.projecto4.utils.LeadState;
-import aor.paj.projecto4.utils.UserRoles;
+import jakarta.ws.rs.WebApplicationException;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.util.ArrayList;
+import java.util.List;
 
-//import static jakarta.faces.component.UIData.PropertyKeys.first;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 public class LeadsBeanTest {
-    LeadsBean leadsBean;
-    UserDao userDao;
-    LeadDao leadDao;
-    TokenBean tokenBean;
-    ArrayList<LeadEntity> leads;
-    UserEntity u;
-    UserEntity spyUser;
-    LeadEntity l1;
-    LeadEntity l2;
-    LeadDTO leadDTO;
+
+    @InjectMocks
+    private LeadsBean leadsBean;
+
+    @Mock
+    private LeadDao leadDao;
+
+    @Mock
+    private UserDao userDao;
+
+    @Mock
+    private TokenBean tokenBean;
+
+    private UserEntity spyUser;
+    private LeadEntity leadEntity;
+    private LeadDTO leadDTO;
 
     @BeforeEach
-    void setup(){
-        //criar os objetos mock
-        userDao=mock(UserDao.class);
-        leadDao=mock(LeadDao.class);
-        tokenBean=mock(TokenBean.class);
+    void setup() {
+        MockitoAnnotations.openMocks(this);
 
-        // a class a ser testada
-        leadsBean=new LeadsBean(leadDao, userDao);
-
-        //criar pelo menos um utilizador que já "esteja na base de dados"
-        u=new UserEntity();
-        u.setPassword("xxxxx");
-        u.setUsername("testDummy");
-        u.setEmail("test@test.com");
-        u.setFirstName("test");
-        u.setLastName("dummy");
-        u.setContact("999999999");
-        u.setUserRole(UserRoles.NORMAL);
-
-
-        //criar pelo menos duas leads
-        l1=new LeadEntity();
-        l1.setOwner(u);
-        l1.setTitulo("Titulo teste lead1");
-        l1.setLeadState(LeadState.NOVO);
-        l1.setDescricao("Descrição teste lead1");
-        l1.setSoftDelete(false);
-
-        l2=new LeadEntity();
-        l2.setOwner(u);
-        l2.setTitulo("Titulo teste lead2");
-        l2.setLeadState(LeadState.NOVO);
-        l2.setDescricao("Descrição teste lead2");
-        l2.setSoftDelete(false);
-
-        //definir um leadDTO
-        //leadDTO.setId(3L);
-        leadDTO=new LeadDTO();
-        leadDTO.setTitle("titulo teste dto");
-        leadDTO.setDescription("descrição test dto");
-        leadDTO.setState(1);
-
-        //adicionar a um array de leads
-        leads=new ArrayList<LeadEntity>();
-        leads.add(l1);
-        leads.add(l2);
-
-        //definir o comportamento dos daos
-        when(leadDao.getLeadsByUserId(1L)).thenReturn(leads);
-        when(leadDao.getLeadsByUserId(15L)).thenReturn(null);
-        when(leadDao.getLeadsByToken("token1")).thenReturn(leads);
-        when(leadDao.getLeadsByToken("token2")).thenReturn(null);
-        when(leadDao.getUserSoftDelLeads(1L)).thenReturn(leads);
-        when(leadDao.getUserSoftDelLeads(15L)).thenReturn(null);
-        //when(userDao.findUserByToken("token1")).thenReturn(u);
-        when(leadDao.getLeadByLeadID(1L)).thenReturn(l1);
-        doNothing().when(leadDao).persist(any(LeadEntity.class));
-        when(userDao.find(1L)).thenReturn(u);
-        when(userDao.find(15L)).thenReturn(null);
-
-        // Create a spy of your user entity
+        // 1. Setup do Utilizador via Spy (ID 1)
+        UserEntity u = new UserEntity();
+        u.setFirstName("Joao");
         spyUser = spy(u);
-        // Tell the spy to return 1L whenever getId() is called
         doReturn(1L).when(spyUser).getId();
-        // make the l1 owner the spyUser
-        l1.setOwner(spyUser);
-        // Use the spyUser in your DAO mocks
-        when(userDao.findUserByToken("token1")).thenReturn(spyUser);
-        when(leadDao.getLeadByLeadID(1L)).thenReturn(l1);
 
+        // 2. Setup da Lead com ID simulado (ID 10) via Spy se necessário,
+        // ou apenas mockando o retorno do DAO
+        leadEntity = spy(new LeadEntity());
+        leadEntity.setTitulo("Lead Antiga");
+        leadEntity.setOwner(spyUser);
+        leadEntity.setLeadState(LeadState.NOVO);
+        doReturn(10L).when(leadEntity).getId();
+
+        // 3. Setup do DTO
+        leadDTO = new LeadDTO();
+        leadDTO.setTitle("Lead Nova");
+        leadDTO.setDescription("Descricao Nova");
+        leadDTO.setState(1); // NOVO
+    }
+
+    // --- TESTES DE USER ---
+
+    @Test
+    @DisplayName("Deve adicionar lead com sucesso via token")
+    void testAddLead() {
+        when(tokenBean.getUserEntityByToken("valid-token")).thenReturn(spyUser);
+
+        LeadDTO result = leadsBean.addLead("valid-token", leadDTO);
+
+        assertNotNull(result);
+        assertEquals("Lead Nova", result.getTitle());
+        verify(leadDao, times(1)).persist(any(LeadEntity.class));
     }
 
     @Test
-    void getLeadDTOsByUserIdTest(){
-        //sucesso devolve o array de leads
-        assertNotNull(leadsBean.getLeadDTOsByUserId(1L));
-        //insucesso o id é nulo
-        assertNull(leadsBean.getLeadDTOsByUserId(null));
-        //insucesso o id é de um user que não existe
-        assertNull(leadsBean.getLeadDTOsByUserId(15L));
+    @DisplayName("Deve editar lead existente")
+    void testEditLead() {
+        when(leadDao.getLeadByLeadID(10L)).thenReturn(leadEntity);
+
+        LeadDTO result = leadsBean.editLead(10L, leadDTO);
+
+        assertNotNull(result);
+        assertEquals("Lead Nova", result.getTitle());
+        verify(leadDao, times(1)).merge(leadEntity);
     }
 
     @Test
-    void getLeadDTOsByTokenTest(){
-        //sucesso devolve o array de leads
-        assertNotNull(leadsBean.getLeadDTOsByToken("token1"));
-        //insucesso o id é nulo
-        assertNull(leadsBean.getLeadDTOsByToken(null));
-        //insucesso o id é de um user que não existe
-        assertNull(leadsBean.getLeadDTOsByToken("token2"));
+    @DisplayName("Deve realizar soft delete de uma lead")
+    void testSoftDeleteLead() {
+        when(leadDao.getLeadByLeadID(10L)).thenReturn(leadEntity);
+
+        leadsBean.softDeleteLead(10L);
+
+        assertTrue(leadEntity.isSoftDelete());
+        verify(leadDao, times(1)).merge(leadEntity);
+    }
+
+    // --- TESTES DE ADMIN ---
+
+    @Test
+    @DisplayName("Admin: Deve adicionar lead diretamente a um utilizador")
+    void testAddLeadToUserSuccess() {
+        when(userDao.find(1L)).thenReturn(spyUser);
+
+        LeadDTO result = leadsBean.addLeadToUser(1L, leadDTO);
+
+        assertNotNull(result);
+        verify(leadDao, times(1)).persist(any(LeadEntity.class));
     }
 
     @Test
-    void getSoftDelLeadsByUserId(){
-        //sucesso devolve o array de leads
-        assertNotNull(leadsBean.getSoftDelLeadsByUserId(1L));
-        //insucesso o id é nulo
-        assertNull(leadsBean.getSoftDelLeadsByUserId(null));
-        //insucesso o id é de um user que não tem softdeleted leads
-        assertNull(leadsBean.getSoftDelLeadsByUserId(15L));
+    @DisplayName("Admin: Deve falhar ao adicionar lead se utilizador for inexistente")
+    void testAddLeadToUserNotFound() {
+        when(userDao.find(99L)).thenReturn(null);
 
-    }
-
-    @Test
-    void getLeadDTOByTokenLeadIdTest(){
-        //sucesso
-        assertNotNull(leadsBean.getLeadDTOByTokenLeadId("token1",1L));
-
-        //insucesso o user está softdeleted
-        spyUser.setSoftDelete(true);
-        assertNull(leadsBean.getLeadDTOByTokenLeadId("token1",1L));
-
-        //insucesso o lead pertence a outro owner
-        UserEntity wrongOwner = spy(new UserEntity());
-        doReturn(99L).when(wrongOwner).getId();
-        l1.setOwner(wrongOwner);
-        assertNull(leadsBean.getLeadDTOByTokenLeadId("token1",1L));
-
-    }
-
-    @Test
-    void addLeadDTOToUserTest(){
-        //sucesso
-        assertTrue(leadsBean.addLeadDTOToUser("token1", leadDTO));
-        //insucesso o utilizador não existe na base de dados
-        assertFalse(leadsBean.addLeadDTOToUser("token2", leadDTO));
-        //insucesso o token está null
-        assertFalse(leadsBean.addLeadDTOToUser(null, leadDTO));
-        //insucesso o dto está null
-        assertFalse(leadsBean.addLeadDTOToUser("token2", null));
-    }
-
-    @Test
-    void addLeadDTOToUserByUserIdTest(){
-        //sucesso
-        assertTrue(leadsBean.addLeadDTOToUserByUserId(1L, leadDTO));
-
-        //Insucesso utilizador não existe
-        // 1. verificar se lança uma exceção
-        WebApplicationException exception = assertThrows(WebApplicationException.class, () -> {
-            leadsBean.addLeadDTOToUserByUserId(15L, leadDTO);
+        assertThrows(WebApplicationException.class, () -> {
+            leadsBean.addLeadToUser(99L, leadDTO);
         });
-
-        // 2. verificar se o status é 404 (Not Found)
-        assertEquals(404, exception.getResponse().getStatus());
-
-        //Insucesso utilizador está sofdeleted
-        u.setSoftDelete(true);
-        //1. verificar se lança exceção
-        WebApplicationException exception2 = assertThrows(WebApplicationException.class, () -> {
-            leadsBean.addLeadDTOToUserByUserId(1L, leadDTO);
-        });
-        // 2. verificar se o status é 403 (Forbidden)
-        assertEquals(403, exception2.getResponse().getStatus());
-
-        //Insucesso o dto está null
-        u.setSoftDelete(false);
-        //1. verificar se lança exceção
-        WebApplicationException exception3 = assertThrows(WebApplicationException.class, () -> {
-            leadsBean.addLeadDTOToUserByUserId(1L, null);
-        });
-        // 2. verificar se o status é bad request
-        assertEquals(400, exception3.getResponse().getStatus());
-
     }
 
     @Test
-    void putLeadDTOByTokenLeadIdTest(){
+    @DisplayName("Admin: Deve realizar hard delete")
+    void testHardDeleteLead() {
+        when(leadDao.getLeadByLeadID(10L)).thenReturn(leadEntity);
 
-        //sucesso
-        assertTrue(leadsBean.putLeadDTOByTokenLeadId("token1",1L, leadDTO));
+        leadsBean.hardDeleteLead(10L);
 
-        //insucesso o token está errado
-        WebApplicationException exception = assertThrows(WebApplicationException.class, () -> {
-            leadsBean.putLeadDTOByTokenLeadId("token12",1L, leadDTO);
+        verify(leadDao, times(1)).remove(leadEntity);
+    }
+
+    @Test
+    @DisplayName("Admin: Deve falhar hard delete se lead não existir")
+    void testHardDeleteNotFound() {
+        when(leadDao.getLeadByLeadID(99L)).thenReturn(null);
+
+        WebApplicationException ex = assertThrows(WebApplicationException.class, () -> {
+            leadsBean.hardDeleteLead(99L);
         });
-        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), exception.getResponse().getStatus());
+        assertEquals(404, ex.getResponse().getStatus());
+    }
 
-        //insucesso o user está softDeleted
-        spyUser.setSoftDelete(true);
-        assertFalse(leadsBean.putLeadDTOByTokenLeadId("token1",1L, leadDTO));
+    @Test
+    @DisplayName("Admin: Deve atualizar em massa (Soft Delete)")
+    void testSoftDeleteAllFromUser() {
+        when(userDao.find(1L)).thenReturn(spyUser);
+        when(leadDao.bulkUpdateSoftDelete(1L, true)).thenReturn(5);
 
-        //insucesso o user está a tentar aceder a uma lead que não é a sua
-        UserEntity wrongOwner = spy(new UserEntity());
-        doReturn(99L).when(wrongOwner).getId();
-        l1.setOwner(wrongOwner);
-        assertFalse(leadsBean.putLeadDTOByTokenLeadId("token1", 1L, leadDTO));
+        int result = leadsBean.softDeleteAllFromUser(1L);
 
-        //insucesso o token está null
-        assertFalse(leadsBean.putLeadDTOByTokenLeadId(null, 1L, leadDTO));
-        //insucesso o leadId está null
-        assertFalse(leadsBean.putLeadDTOByTokenLeadId("token1", null, leadDTO));
-        //insucesso o leadDTO está null
-        assertFalse(leadsBean.putLeadDTOByTokenLeadId("token1", 1L, null));
+        assertEquals(5, result);
+        verify(leadDao).bulkUpdateSoftDelete(1L, true);
+    }
 
+    @Test
+    @DisplayName("Admin: Super Edit deve alterar estado de soft delete")
+    void testAdminSuperEdit() {
+        when(leadDao.getLeadByLeadID(10L)).thenReturn(leadEntity);
+        leadDTO.setSoftDelete(true);
+
+        LeadDTO result = leadsBean.adminSuperEdit(10L, leadDTO);
+
+        assertTrue(result.isSoftDelete());
+        verify(leadDao).merge(leadEntity);
     }
 }

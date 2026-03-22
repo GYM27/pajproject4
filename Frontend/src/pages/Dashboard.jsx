@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useCallback } from "react"; // Adicionado useCallback
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import api from "../services/api"; // 1. Importação do motor central
 import "../App.css";
 
 const Dashboard = () => {
@@ -15,68 +16,45 @@ const Dashboard = () => {
 
   const navigate = useNavigate();
 
-  // 1. Usamos useCallback para que a função não mude a cada render
-  // Isso resolve o erro "Calling setState synchronously within an effect"
+  // 1. Usamos useCallback para que a função não seja recriada em cada renderização
   const fetchDashboardData = useCallback(async () => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
-
     try {
-      // Chamada para buscar as Leads
-      const responseLeads = await fetch(
-        "http://localhost:8080/LuisF-proj4/rest/leads/me",
-        {
-          method: "GET",
-          headers: {
-            Accept: "application/json",
-            token: token,
-          },
-        },
-      );
+      // 2. Chamadas paralelas à API usando o teu wrapper centralizado
+      // Nota: No teu Backend, o endpoint para leads do próprio user é /leads/me
+      const leads = await api("/leads");
+      const clientes = await api("/clients");
 
-      if (responseLeads.ok) {
-        const leads = await responseLeads.json();
-        setStats((prev) => ({
-          ...prev,
-          novos: leads.filter((l) => l.state === 1).length,
-          analise: leads.filter((l) => l.state === 2).length,
-          propostas: leads.filter((l) => l.state === 3).length,
-          ganhos: leads.filter((l) => l.state === 4).length,
-          perdidos: leads.filter((l) => l.state === 5).length,
-          leads: leads.length,
-        }));
-      }
-
-      // Chamada para buscar Clientes
-      const responseClientes = await fetch(
-        "http://localhost:8080/LuisF-proj4/rest/clients",
-        {
-          method: "GET",
-          headers: {
-            Accept: "application/json",
-            token: token,
-          },
-        },
-      );
-
-      if (responseClientes.ok) {
-        const clientes = await responseClientes.json();
-        setStats((prev) => ({ ...prev, clientes: clientes.length }));
-      }
+      // 3. Atualização do estado (Corrigido de 'serStats' para 'setStats')
+      setStats({
+        novos: leads.filter((lead) => lead.state === 1).length,
+        analise: leads.filter((lead) => lead.state === 2).length,
+        propostas: leads.filter((lead) => lead.state === 3).length,
+        ganhos: leads.filter((lead) => lead.state === 4).length,
+        perdidos: leads.filter((lead) => lead.state === 5).length,
+        leads: leads.length,
+        clientes: clientes.length,
+      });
     } catch (error) {
-      console.error("Erro ao carregar dados do dashboard:", error);
+      /**
+       * 4. Tratamento de Erro Centralizado:
+       * O erro lançado pelo api.js (ex: 401 ou erro de rede) é capturado aqui.
+       */
+      console.error("Erro ao carregar dados do dashboard:", error.message);
+
+      // Se a sessão expirou, limpamos os dados e voltamos ao login
+      if (
+        error.message.includes("Sessão inválida") ||
+        error.message.includes("401")
+      ) {
+        localStorage.removeItem("token");
+        navigate("/login");
+      }
     }
-  }, []); // Dependências vazias: a função é criada apenas uma vez
+  }, [navigate]);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      navigate("/login");
-      return;
-    }
-
     fetchDashboardData();
-  }, [navigate, fetchDashboardData]); // fetchDashboardData agora é uma dependência estável
+  }, [fetchDashboardData]);
 
   return (
     <div className="container-fluid">
