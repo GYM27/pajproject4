@@ -121,7 +121,7 @@ function Register() {
                 type="tel"
                 name="cellphone"
                 placeholder="+351"
-                value={inputs.contact}
+                value={inputs.cellphone}
                 onChange={handleChange}
                 required
               />

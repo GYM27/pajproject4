@@ -1,19 +1,23 @@
 package aor.paj.projecto4.bean;
 
+
 import jakarta.ejb.Stateless;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.TypedQuery;
 import jakarta.ws.rs.WebApplicationException;
-import jakarta.ws.rs.core.Response;
 import aor.paj.projecto4.dao.LeadDao;
 import aor.paj.projecto4.dao.UserDao;
 import aor.paj.projecto4.dto.LeadDTO;
 import aor.paj.projecto4.entity.LeadEntity;
 import aor.paj.projecto4.entity.UserEntity;
 import aor.paj.projecto4.utils.LeadState;
-
 import java.io.Serial;
 import java.io.Serializable;
-import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Stateless
 public class LeadsBean implements Serializable {
@@ -22,412 +26,239 @@ public class LeadsBean implements Serializable {
     @Inject
     LeadDao leadDao;
     @Inject
+    TokenBean tokenBean;
+    @Inject
     UserDao userDao;
+    @PersistenceContext(unitName = "project3PU")
+    private EntityManager em;
 
-    /**
-     * Construtor vazio
-     */
-    public LeadsBean(){}
 
-    /**
-     * Construtor necessário para os testes unitários
-     * @param leadDao o Dao de acesso aos leads
-     * @param userDao o Dao de acesso aos users
-     */
-    public LeadsBean(LeadDao leadDao, UserDao userDao) {
-        this.leadDao = leadDao;
-        this.userDao = userDao;
+
+    // HELPERS -------------------------------------------------------------
+
+    // Entity -> DTO
+    public LeadDTO entityToDTO(LeadEntity entity) {
+        if (entity == null) return null;
+        LeadDTO dto = new LeadDTO();
+        dto.setId(entity.getId());
+        dto.setTitle(entity.getTitulo());
+        dto.setDescription(entity.getDescricao());
+        dto.setState(entity.getLeadState().getStateId()); // Envia 1, 2, 3...
+        dto.setDate(entity.getData());
+        return dto;
     }
 
-
-    /**
-     * Devolve a lista de leadDTOs de um utilizador
-     * @param userId o id do utilizador
-     * @return arrayList de DTOs desse utilizador
-     */
-    public ArrayList<LeadDTO> getLeadDTOsByUserId(Long userId){
-        if(userId!=null){
-
-            ArrayList<LeadEntity> leadEntities= (ArrayList<LeadEntity>) leadDao.getLeadsByUserId(userId);
-            if(leadEntities==null) return null;
-
-            ArrayList<LeadDTO> leadDTOS=new ArrayList<>();
-            for(LeadEntity l:leadEntities){
-                if(l!=null){
-                    leadDTOS.add(convertLeadEntityToDTO(l));
-                }
-            }
-            return leadDTOS;
-        }
-        return null;
+    // DTO -> Entity (Para criar novos registos)
+    //Utiliza o Enum validado pelo DTO para garantir a integridade.
+    private LeadEntity DTOToEntity(LeadDTO dto, UserEntity owner) {
+        LeadEntity entity = new LeadEntity();
+        entity.setTitulo(dto.getTitle());
+        entity.setDescricao(dto.getDescription());
+        entity.setLeadState(dto.getStateEnum());
+        entity.setOwner(owner);
+        entity.setSoftDelete(false);
+        return entity;
     }
 
-
     /**
-     * Devolve um arrayList de DTOs dos leads do utilizador
-     * @param token o token de acesso do utilizador
-     * @return arrayList de DTOs dos leads do utilizador
+     * Helper para converter listas de entidades para DTOs.
      */
-    public ArrayList<LeadDTO> getLeadDTOsByToken(String token){
-        if(token!=null){
-
-            ArrayList<LeadEntity> leadEntities= (ArrayList<LeadEntity>) leadDao.getLeadsByToken(token);
-            if(leadEntities==null) return null;
-            ArrayList<LeadDTO> leads=new ArrayList<>();
-            for(LeadEntity l:leadEntities){
-                if(l!=null){
-                    leads.add(convertLeadEntityToDTO(l));
-                }
-            }
-            return leads;
-        }
-        return null;
+    private List<LeadDTO> toDTOList(List<LeadEntity> entities) {
+        if (entities == null) return Collections.emptyList();
+        return entities.stream()
+                .map(this::entityToDTO)
+                .collect(Collectors.toList());
     }
 
+    // ------------------------------------------
 
+    // FUNCIONALIDADES DE USER
     /**
-     * Devolve arrayList de leads com softDelete do utilizador
-     * @param userId o idd do utilizador
-     * @return arrayList de leads com softDelete
+     * Adicionar Lead
+     * devolvemos o DTO criado
      */
-    public ArrayList<LeadDTO> getSoftDelLeadsByUserId(Long userId){
-        if(userId!=null){
-            ArrayList<LeadEntity> leadEntities= (ArrayList<LeadEntity>) leadDao.getUserSoftDelLeads(userId);
-            ArrayList<LeadDTO> result=new ArrayList<>();
-            if(leadEntities!=null&&!leadEntities.isEmpty()){
-                for(LeadEntity l : leadEntities){
-                    result.add(convertLeadEntityToDTO(l));
-                }
-                return result;
-            }
-        }
-        return null;
-    }
+    public LeadDTO addLead(String token, LeadDTO dto) {
+        // 1. Obtemos o dono através do token
+        UserEntity owner = tokenBean.getUserEntityByToken(token);
 
-    /*public Lead convertLeadEntityToPojo(LeadEntity leadEntity){
-        if(leadEntity!=null){
-            Lead lead=new Lead();
-            lead.setId(leadEntity.getId());
-            lead.setTitulo(leadEntity.getTitulo());
-            lead.setDescricao(leadEntity.getDescricao());
-            lead.setEstado(leadEntity.getLeadState());
-            lead.setData(leadEntity.getData());
-            return lead;
-        }
-        return null;
-    }*/
+        // 2. Criamos a entidade usando o Helper DTOtoEntity
+        // Este helper já define o owner e o estado inicial validado
+        LeadEntity newLead = DTOToEntity(dto, owner);
 
+        // 3. Persistimos na Base de Dados
+        // Se algo falhar aqui (ex: erro de ligação), a exceção sobe para o Mapper
+        em.persist(newLead);
+        em.flush(); // <--- OBRIGA o Hibernate a gerar a @CreationTimestamp AGORA
 
-    /**
-     * Converte uma LeadEntity no seu DTO
-     * @param leadEntity a leadEntity
-     * @return o seu DTO
-     */
-    public LeadDTO convertLeadEntityToDTO(LeadEntity leadEntity){
-        if(leadEntity!=null){
-            LeadDTO leadDTO=new LeadDTO();
-            leadDTO.setId(leadEntity.getId());
-            leadDTO.setTitle(leadEntity.getTitulo());
-            leadDTO.setDescription(leadEntity.getDescricao());
-            leadDTO.setState(leadEntity.getLeadState().getStateId());
-            leadDTO.setDate(leadEntity.getData());
-            return leadDTO;
-        }
-        return null;
-
+        // 4. Devolvemos o DTO preenchido (agora com o ID gerado pela BD)
+        return entityToDTO(newLead);
     }
 
 
     /**
-     * Devolve um leadDTO correspondente a um lead específico de um utilizador específico
-     * @param token o token de acesso do utilizador
-     * @param leadId o id do lead a devolver
-     * @return o dto do lead
+     * Procura todas as leads do utilizador autenticado.
+     * O Bean resolve o Token e o DAO trata da Query.
      */
-    public LeadDTO getLeadDTOByTokenLeadId(String token, Long leadId){
-        UserEntity userEntity=userDao.findUserByToken(token);
-        //check if user is empty
-        if(userEntity==null){
-            throw new WebApplicationException(
-                    Response.status(Response.Status.UNAUTHORIZED)
-                            .entity("Invalid Token").build());
-        }
-        //check if user is softDeleted
-        if(userEntity.isSoftDelete()){
-            return null;
-        }
-        Long userId=userEntity.getId();
-        //just get the lead by id and then check if leadownerid=userid
-        LeadEntity leadEntity=leadDao.getLeadByLeadID(leadId);
-        if(leadEntity!=null&&leadEntity.getOwner().getId().equals(userId)){
-            return convertLeadEntityToDTO(leadEntity);
-        }
+    public List<LeadDTO> getLeadsByToken(String token) {
+        // 1. O Bean resolve o utilizador através do token
+        UserEntity user = tokenBean.getUserEntityByToken(token);
 
-        return null;
+        // 2. Chamamos o método eficiente do DAO usando apenas o ID
+        List<LeadEntity> entities = leadDao.getLeadsByUserId(user.getId());
 
+        // 3. Transformação moderna para DTO (sem necessidade de check null, o DAO devolve [] se vazio)
+        return entities.stream()
+                .map(this::entityToDTO)
+                .collect(Collectors.toList());
     }
 
 
     /**
-     * Adiciona um lead ao utilizador
-     * @param token o token de identificação do utilizador
-     * @param leadDTO o DTO do novo lead
-     * @return true se bem sucedido, falso caso contrário
+     * Procura uma Lead pelo ID e converte para DTO.
+     * A segurança já foi validada pelo Verifier no Service.
      */
-    public boolean addLeadDTOToUser(String token, LeadDTO leadDTO){
-        //go get the user
-        UserEntity u= userDao.findUserByToken(token);
-        if(u!=null){
-            if(leadDTO!=null){
-                try{
-                    LeadEntity l =new LeadEntity();
-                    l.setOwner(u);
-                    l.setLeadState(LeadState.fromId(leadDTO.getState()));
-                    l.setDescricao(leadDTO.getDescription());
-                    l.setTitulo(leadDTO.getTitle());
-                    leadDao.persist(l);
-                    return true;
-                } catch (Exception e) {
-                    return false;
-                }
-            }
+    public LeadDTO getLeadById(Long leadId) {
+        // 1. Pedimos ao DAO para encontrar a entidade
+        LeadEntity entity = leadDao.getLeadByLeadID(leadId);
+
+        // 2. Convertemos para DTO
+        return entityToDTO(entity);
+    }
+
+        /**
+        * U5 e U6 Atualiza os dados de uma Lead.
+        * A segurança (token, user ativo e posse) já foi garantida pelo Verifier no Service.
+        */
+    public LeadDTO editLead(Long leadId, LeadDTO dto) {
+        // LeadDAO procura a Lead. Como o Verifier já correu,
+        // temos a certeza absoluta que ela existe e pertence ao utilizador.
+        LeadEntity lead = leadDao.getLeadByLeadID(leadId);
+
+        // 2. Atualizamos os campos com os dados validados do DTO
+        lead.setTitulo(dto.getTitle());
+        lead.setDescricao(dto.getDescription());
+        lead.setLeadState(dto.getStateEnum());
+
+        // 3. O JPA deteta as alterações nos setters e fará o UPDATE no fim da transação.
+        // Retornamos o DTO atualizado para o React confirmar a mudança no ecrã.
+        return entityToDTO(lead);
+    }
+
+    /**
+     * Marca a Lead como eliminada para que não apareça nas listagens do Dashboard.
+     */
+    public void softDeleteLead(Long leadId) {
+        // 1. Em vez de em.find, usamos o DAO para manter o padrão Repository
+        LeadEntity lead = leadDao.getLeadByLeadID(leadId);
+
+        // 2. Efetuamos o Soft Delete (Apenas alteramos o estado do boolean)
+        if (lead != null) {
+            lead.setSoftDelete(true);
         }
-        return false;
+    }
+
+
+
+    //---------------- FUNCIONALIDADES DE ADMIN ----------------------------------------
+    public List<LeadDTO> getLeadsWithFilters(Integer stateId, Long userId, Boolean softDeleted) {
+        // 1. O Bean já não constrói a Query. Ele pede ao DAO.
+        List<LeadEntity> entities = leadDao.findLeadsWithFilters(stateId, userId, softDeleted);
+
+        // 2. Transforma em DTO e devolve
+        return toDTOList(entities);
     }
 
 
     /**
-     * Adiciona um lead ao utilizador, utilizado pelo Admin, identifica o utilizador pelo seu id
-     * @param userId id do utilizador
-     * @param leadDTO DTO do novo lead
-     * @return true se bem sucedido, falso caso contrário
+     * Super Put Admin: Permite ao Administrador editar qualquer campo de uma Lead,
+     * incluindo o seu estado de Soft Delete (Undelete).
      */
-    public boolean addLeadDTOToUserByUserId(Long userId, LeadDTO leadDTO){
-        UserEntity u= userDao.find(userId);
+    public LeadDTO adminSuperEdit(Long leadId, LeadDTO dto) {
+        // 1. Verificação de segurança básica
+        if (dto == null) throw new WebApplicationException("Dados de edição inválidos", 400);
 
-        //verificar se o user existe
-        if(u==null){
-            throw new WebApplicationException(
-                    Response.status(Response.Status.NOT_FOUND)
-                            .entity("User not found").build());
+        // 2. Delegação ao DAO (Arquitetura Repository)
+        LeadEntity lead = leadDao.getLeadByLeadID(leadId);
+
+        // 3. Validação de existência (Fail-fast)
+        if (lead == null) throw new WebApplicationException("Lead não encontrada", 404);
+
+        // 4. Atualização Seletiva (O Admin só muda o que envia)
+        if (dto.getTitle() != null && !dto.getTitle().isBlank()) {
+            lead.setTitulo(dto.getTitle());
         }
 
-        //verificar o se o user está soft deleted
-        if(u.isSoftDelete()){
-            throw new WebApplicationException(
-                    Response.status(Response.Status.FORBIDDEN)
-                            .entity("User is not active").build());
+        if (dto.getDescription() != null) {
+            lead.setDescricao(dto.getDescription());
         }
 
-        //verificar se o lead veio mesmo
-        if(leadDTO==null){
-            throw new WebApplicationException(
-                    Response.status(Response.Status.BAD_REQUEST)
-                            .entity("Lead is empty").build());
+        if (dto.getState() > 0) {
+            // Validação interna já tratada pelo getStateEnum()
+            lead.setLeadState(dto.getStateEnum());
         }
 
-        //agora que já verificamos tudo podemos adicionar
-        try{
-            LeadEntity l =new LeadEntity();
-            l.setOwner(u);
-            l.setLeadState(LeadState.fromId(leadDTO.getState()));
-            l.setDescricao(leadDTO.getDescription());
-            l.setTitulo(leadDTO.getTitle());
-            leadDao.persist(l);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
+        // Permite ao Admin recuperar leads (Undelete)
+        // Aqui assumimos que o DTO traz o estado desejado do softDelete
+        lead.setSoftDelete(dto.isSoftDelete());
 
+        // 6. Conversão consistente para o Frontend
+        return entityToDTO(lead);
     }
 
+    public LeadDTO addLeadToUser(Long userId, LeadDTO dto) {
+        // 1. Delegar a procura do utilizador ao UserDao (Injetar o UserDao no topo do Bean)
+        UserEntity owner = userDao.findUserById(userId);
 
-    /**
-     * Permite editar um lead de um utilizador
-     * @param token o token identificador do utilizador
-     * @param leadId oo id do lead
-     * @param leadDTO o DTO com as alterações
-     * @return true se bem sucedido, false caso contrário.
-     */
-    public boolean putLeadDTOByTokenLeadId(String token, Long leadId, LeadDTO leadDTO){
-        if(token==null) return false;
-        UserEntity userEntity=userDao.findUserByToken(token);
-        //check if user is empty
-        if(userEntity==null){
-            throw new WebApplicationException(
-                    Response.status(Response.Status.NOT_FOUND)
-                            .entity("User not found").build());
-        }
-        //check if user is soft deleted
-        if(userEntity.isSoftDelete()){
-            return false;
-        }
-        Long userId=userEntity.getId();
-
-        //Check if the leadId owner is the user
-
-        if(leadId!=null&&leadDTO!=null){
-            LeadEntity l=leadDao.getLeadByLeadID(leadId);
-
-            //Check if the leadId owner is the user
-            if(!userId.equals(l.getOwner().getId())){
-                return false;
-            }
-            //if everything is ok do the thing;
-            l.setTitulo(leadDTO.getTitle());
-            l.setLeadState(LeadState.fromId(leadDTO.getState()));
-            l.setDescricao(leadDTO.getDescription());
-            return true;
+        // 2. Validação de segurança (Negócio)
+        if (owner == null || owner.isSoftDelete()) {
+            throw new WebApplicationException("Utilizador destino não encontrado ou inativo", 404);
         }
 
-        return false;
+        // 3. Criar a nova entidade com o dono específico
+        LeadEntity newLead = DTOToEntity(dto, owner);
+
+        // 4. Persistência
+        em.persist(newLead);
+        em.flush(); // Garante a geração do ID e Data para o retorno
+
+        return entityToDTO(newLead);
     }
 
     /**
-     * Permite ao admin editar um lead de um utilizador
-     * @param userId o id do utilizador
-     * @param leadId o id do lead
-     * @param leadDTO o DTO com as novas informações
-     * @return true se bem sucedido, falso caso contrário
+     * Remove fisicamente o registo da lead da base de dados.
      */
-    public boolean adminUpdateLeadDTO(Long userId, Long leadId, LeadDTO leadDTO){
-        UserEntity userEntity=userDao.find(userId);
-        //check if user is empty
-        if(userEntity==null){
-            throw new WebApplicationException(
-                    Response.status(Response.Status.NOT_FOUND)
-                            .entity("User not found").build());
-        }
-        //check if user is soft deleted
-        if(userEntity.isSoftDelete()){
-            throw new WebApplicationException(
-                    Response.status(Response.Status.FORBIDDEN)
-                            .entity("User is not active").build());
+    public void hardDeleteLead(Long leadId) {
+        // 1. Procurar via DAO para respeitar as camadas
+        LeadEntity lead = leadDao.getLeadByLeadID(leadId);
+
+        // 2. Validação de existência (Fail-fast)
+        if (lead == null) {
+            throw new WebApplicationException("Lead não encontrada para remoção.", 404);
         }
 
-        //check if lead received is null
-        if(leadDTO==null){
-            throw new WebApplicationException(
-                    Response.status(Response.Status.BAD_REQUEST)
-                            .entity("Lead is empty").build());
-        }
-
-        //Check if the lead to edit is on the database
-        LeadEntity l=leadDao.getLeadByLeadID(leadId);
-        if(l==null){
-            throw new WebApplicationException(
-                    Response.status(Response.Status.NOT_FOUND)
-                            .entity("Lead to edit not found").build());
-        }
-
-        //if everything is ok do the thing;
-        try{
-
-            l.setTitulo(leadDTO.getTitle());
-            l.setLeadState(LeadState.fromId(leadDTO.getState()));
-            l.setDescricao(leadDTO.getDescription());
-            leadDao.merge(l);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-
+        // 3. Remoção delegada ao DAO (podes usar o remove herdado do AbstractDao)
+        leadDao.remove(lead);
     }
+    /**
+     * Altera o estado de softDelete para true em todas as leads de um utilizador específico.
+     * @return O número de registos que foram alterados.
+     */
+    public int softDeleteAllFromUser(Long userId) {
+        // Validação básica continua aqui
+        if (em.find(UserEntity.class, userId) == null) throw new WebApplicationException("User not found", 404);
 
+        // Chama o DAO (que agora tem o UPDATE eficiente)
+        return leadDao.bulkUpdateSoftDelete(userId, true);
+    }
 
     /**
-     * Permite apagar definitivamente um lead
-     * @param leadId id do lead a apagar
-     * @return true se bem sucedido, falso caso contrário
+     * Recupera todas as leads de um utilizador (Undelete em massa).
+     * @return O número de leads que foram trazidas de volta da lixeira.
      */
-    public boolean hardDelLeadById(Long leadId){
-        if(leadId!=null){
-            return leadDao.hardDelete(leadId);
-            }
-        return false;
-    }
+    public int undeleteAllFromUser(Long userId) {
+        if (em.find(UserEntity.class, userId) == null) throw new WebApplicationException("User not found", 404);
 
-    public boolean softDelLeadById(Long leadId, String token){
-        if(leadId==null) return false;
-        if(token==null) return false;
-        UserEntity u= userDao.findUserByToken(token);
-        if(u==null) return false;
-        LeadEntity l =leadDao.getLeadByLeadID(leadId);
-        if(l==null) return false;
-        if(!l.getOwner().getId().equals(u.getId())) return false;
-
-        return leadDao.softDelete(leadId);
-    }
-
-    public boolean adminSoftDelLeadById(Long leadId){
-        if(leadId!=null){
-            return leadDao.softDelete(leadId);
-        }
-        return false;
-    }
-
-    public boolean softUnDelLeadById(Long leadId){
-        if(leadId!=null){
-            return leadDao.softUnDelete(leadId);
-        }
-        return false;
-    }
-
-    /*public boolean softDelALlUserLeads(String token){
-        if(token!=null){
-            return leadDao.softDelALlUserLeads(token);
-        }
-        return false;
-    }*/
-
-    public boolean softDelALlUserLeadsAdmin(Long id){
-        if(id!=null){
-            return leadDao.softDelALlUserLeadsAdmin(id);
-        }
-        return false;
-    }
-
-
-
-    /*public boolean softUnDelALlUserLeads(String token){
-        if(token!=null){
-            return leadDao.softUnDelALlUserLeads(token);
-        }
-        return false;
-    }*/
-
-    public boolean softUnDelALlUserLeadsAdmin(Long id){
-        if(id!=null){
-            return leadDao.softUnDelALlUserLeadsAdmin(id);
-        }
-        return false;
-    }
-
-
-
-    public ArrayList<LeadDTO> getLeadDTOsByState(Integer stateId){
-        //verificar se chegaram cá as informações todas
-        if(stateId==null) return null;
-
-        //verificar se o stateId está correto e corresponde a algum estado
-        LeadState state;
-        try {
-            state=LeadState.fromId(stateId);
-        } catch (Exception e) {
-            return null;
-        }
-
-        //verificar se há algum resultado
-        ArrayList<LeadEntity> leadEntities= (ArrayList<LeadEntity>) leadDao.getLeadsByState(state);
-        if(leadEntities==null) return null;
-
-        ArrayList<LeadDTO> leads= new ArrayList<>();
-        //converter para os DTOs
-        for(LeadEntity l : leadEntities){
-            leads.add(convertLeadEntityToDTO(l));
-        }
-        //devolver o resultado
-        return leads;
+        return leadDao.bulkUpdateSoftDelete(userId, false);
     }
 
 }

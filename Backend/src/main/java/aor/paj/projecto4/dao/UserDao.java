@@ -102,4 +102,12 @@ public class UserDao extends AbstractDao<UserEntity> implements Serializable {
         return false;
     }
 
+    public UserEntity findUserById(Long id) {
+        try {
+            return em.find(UserEntity.class, id);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
 }

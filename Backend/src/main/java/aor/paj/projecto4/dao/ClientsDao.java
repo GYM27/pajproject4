@@ -1,7 +1,9 @@
 package aor.paj.projecto4.dao;
 
+import aor.paj.projecto4.entity.UserEntity;
 import jakarta.ejb.Stateless;
 import aor.paj.projecto4.entity.ClientsEntity;
+import jakarta.persistence.TypedQuery;
 
 import java.util.List;
 
@@ -21,9 +23,9 @@ public class ClientsDao extends AbstractDao<ClientsEntity> {
                 .getResultList();
     }
 
-    public List<ClientsEntity> findActiveByOwner(Long ownerId) {
+    public List<ClientsEntity> findActiveByOwner(UserEntity owner) {
         return em.createNamedQuery("ClientsEntity.findActiveByOwner", ClientsEntity.class)
-                .setParameter("ownerId", ownerId)
+                .setParameter("owner", owner)
                 .getResultList();
     }
 
@@ -42,6 +44,33 @@ public class ClientsDao extends AbstractDao<ClientsEntity> {
         return em.createQuery("SELECT c FROM ClientsEntity c WHERE c.owner.id = :userId AND c.softDelete = true", ClientsEntity.class)
                 .setParameter("userId", userId)
                 .getResultList();
+    }
+
+
+    public List<ClientsEntity> findActiveWithOptionalFilter(Long ownerId) {
+        // 1. Definição da Query Base
+        // Começamos com a base que todos os resultados devem ter: não estar na lixeira.
+        String jpql = "SELECT c FROM ClientsEntity c WHERE c.softDelete = false";
+
+        // 2. Construção Dinâmica
+        // Se o ownerId não for nulo, "colamos" um filtro extra à String da query.
+        // Se for nulo (ex: Admin a ver tudo), a query permanece a original.
+        if (ownerId != null) {
+            jpql += " AND c.owner.id = :ownerId";
+        }
+
+        // 3. Criação da Query tipada
+        TypedQuery<ClientsEntity> query = em.createQuery(jpql, ClientsEntity.class);
+
+        // 4. Atribuição de Parâmetros Segura
+        // Só tentamos preencher o parâmetro ":ownerId" se ele realmente existir na String acima.
+        // Usar setParameter previne ataques de SQL Injection.
+        if (ownerId != null) {
+            query.setParameter("ownerId", ownerId);
+        }
+
+        // 5. Execução
+        return query.getResultList();
     }
 }
 

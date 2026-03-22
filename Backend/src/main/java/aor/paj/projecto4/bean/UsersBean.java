@@ -42,6 +42,53 @@ public class UsersBean implements Serializable {
         this.tokenBean = tokenBean;
     }
 
+    // No UsersBean.java
+
+    public UserDTO convertToUserDTO(UserEntity entity) {
+        if (entity == null) return null;
+
+        // 1. Criamos primeiro a base (Campos comuns: nome, email, foto, id)
+        UserBaseDTO base = convertToUserBaseDTO(entity);
+
+        // 2. Criamos o DTO completo e copiamos os dados da base
+        UserDTO dto = new UserDTO();
+        dto.setId(base.getId());
+        dto.setFirstName(base.getFirstName());
+        dto.setLastName(base.getLastName());
+        dto.setEmail(base.getEmail());
+        dto.setCellphone(base.getCellphone());
+        dto.setPhotoUrl(base.getPhotoUrl());
+        dto.setSoftDelete(base.isSoftDelete());
+        dto.setRole(base.getRole());
+
+        // 3. Acrescentamos o que é privado (Username e Password)
+        // Este DTO só será usado no endpoint "/me" (O Próprio)
+        dto.setUsername(entity.getUsername());
+        dto.setPassword(entity.getPassword());
+
+        return dto;
+    }
+
+
+
+
+    private UserBaseDTO entityToUserBaseDTO(UserEntity entity) {
+        if (entity == null) return null;
+        UserBaseDTO dto = new UserBaseDTO();
+        dto.setId(entity.getId());
+        dto.setFirstName(entity.getFirstName());
+        dto.setLastName(entity.getLastName());
+        dto.setEmail(entity.getEmail());
+        dto.setCellphone(entity.getContact());
+        dto.setPhotoUrl(entity.getPhoto());
+        dto.setSoftDelete(entity.isSoftDelete());
+        if (entity.getUserRole() != null) {
+            dto.setRole(entity.getUserRole().name());
+        }
+        return dto;
+    }
+
+
     /**
      * Método privado para irmos buscar a UserEntity por id
      * @param id id do UserEntity que queremos
@@ -106,68 +153,7 @@ public class UsersBean implements Serializable {
         return  null;
     }
 
-    public UserDTO convertToUserDTO (UserEntity entity){
-        UserDTO userDTO= new UserDTO();
-        if(entity!=null){
-            userDTO.setUsername(entity.getUsername());
-            userDTO.setPassword(entity.getPassword());
-            userDTO.setCellphone(entity.getContact());
-            userDTO.setFirstName(entity.getFirstName());
-            userDTO.setLastName(entity.getLastName());
-            userDTO.setPhotoUrl(entity.getPhoto());
-            userDTO.setEmail(entity.getEmail());
-            // Novos campos necessários para a página de Administrador
-            userDTO.setId(entity.getId());
-            //userBaseDTO.setUsername(entity.getUsername());
-            userDTO.setSoftDelete(entity.isSoftDelete());
-
-            if(entity.getUserRole() != null) {
-                userDTO.setRole(entity.getUserRole().name());
-            }
-
-            return userDTO;
-        }
-        return  null;
-    }
-
-
-    /*/**
-     * Recebe uma lista de LeadEntity e devolve uma lista de POJO's Lead
-     * @param leadEntityList
-     * @return
-     */
-    /*private List<Lead> convertEntityLeads(List<LeadEntity> leadEntityList){
-        ArrayList<Lead> leadPojos= new ArrayList<Lead>();
-        if(leadEntityList!=null){
-            for (LeadEntity le :leadEntityList){
-                Lead lp=new Lead();
-                lp.setId(le.getId());
-                lp.setEstado(le.getLeadState());
-                lp.setTitulo(le.getTitulo());
-                lp.setDescricao(le.getDescricao());
-                leadPojos.add(lp);
-            }
-            return leadPojos;
-        }
-        return  null;
-    }*/
-
-    /*/**
-     * Recebe um username e devolve um POJO do User
-     * Mais uma vez não sei se necessário
-     * @param username wel duh
-     * @return o User que tem esse username
-     */
-    /*public User getUserbyUsername(String username){
-        UserEntity userEntity=userDao.findUserByUsername(username);
-        if(userEntity!=null){
-            return convertToPojo(userEntity);
-        }else{
-            return null;
-        }
-    }*/
-
-    /**
+     /**
      * Recebe um loginDTO com o username e pass de quem está a tentar fazer login
      * @param loginDTO
      * @return devolve um User POJO se as credenciais estão corretas

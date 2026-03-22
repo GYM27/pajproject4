@@ -41,11 +41,11 @@ public class UserService {
         verifier.verifyUser(token);
 
         //funcionalidade
-        UserDTO u = usersBean.getUserDTOByToken(token);
-        if (u == null) {
+        UserDTO user = usersBean.getUserDTOByToken(token);
+        if (user == null) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
-        return Response.ok(u).build();
+        return Response.ok(user).build();
     }
 
     /**
@@ -78,25 +78,6 @@ public class UserService {
     @Path("/me")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    /*public Response patchEditUser(
-            //@PathParam("id") Long resourceId,
-            @HeaderParam("token") String token,
-            @Valid UserBaseDTO userBaseDTO) {
-
-        //validar o utilizador
-        verifier.verifyUser(token);
-
-        //funcionalidade
-        boolean success = usersBean.putEditUser(token, userBaseDTO);
-
-        if (success) {
-            return Response.ok(userBaseDTO).build();
-        } else {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Erro ao atualizar o perfil.")
-                    .build();
-        }
-    }*/
 
     public Response putEditUser(
             //@PathParam("id") Long resourceId,

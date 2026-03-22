@@ -21,6 +21,7 @@ function Login() {
   const [error, setError] = useState(null);
 
   // Hooks de navegação e estado global
+  const userRole = useUserStore((state) => state.userRole);
   const navigate = useNavigate();
   const updateName = useUserStore((state) => state.updateName);
 
@@ -50,7 +51,7 @@ function Login() {
 
       // REGRAS DE NAVEGAÇÃO:
       // Usamos o navigate para o DASHBOARD, não para o login novamente
-      navigate("/Dashboard", { replace: true });
+      navigate("/dashboard", { replace: true });
 
     } catch (err) {
       setError(err.message);

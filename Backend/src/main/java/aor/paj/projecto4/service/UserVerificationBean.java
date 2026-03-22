@@ -1,5 +1,6 @@
 package aor.paj.projecto4.service;
 
+import aor.paj.projecto4.entity.LeadEntity;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.WebApplicationException;
@@ -21,21 +22,21 @@ public class UserVerificationBean {
     @jakarta.persistence.PersistenceContext(unitName = "project3PU")
     private jakarta.persistence.EntityManager em;
 
-//todo, tb temos que verificar se o utililizador está inativo
-    public void verifyUser(String token){
+
+    public UserEntity verifyUser(String token) {
 
         //verificar se o token do user está válido
-        if(token==null||!tokenBean.isTokenValid(token)){
+        if (token == null || !tokenBean.isTokenValid(token)) {
             throw new WebApplicationException(
                     Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Token Inválido")
-                    .build()
+                            .entity("Token Inválido")
+                            .build()
             );
 
         }
 
         //o token está válido, vamos buscar o utilizador
-        UserEntity userEntity=tokenBean.getUserEntityByToken(token);
+        UserEntity userEntity = tokenBean.getUserEntityByToken(token);
         //para ser extra cuidadoso
         if (userEntity == null) {
             throw new WebApplicationException(
@@ -46,7 +47,7 @@ public class UserVerificationBean {
         }
 
         //verificamos se o utilizador está ativo
-        if(userEntity.isSoftDelete()){
+        if (userEntity.isSoftDelete()) {
             throw new WebApplicationException(
                     Response.status(Response.Status.FORBIDDEN)
                             .entity("Utilizador inativo")
@@ -54,25 +55,14 @@ public class UserVerificationBean {
             );
         }
 
-        //se não for um admin verificamos se pode aceder ao recurso pretendido
-        /*if(userEntity.getUserRole()!=UserRoles.ADMIN){
-            if(!userEntity.getId().equals(resourceId)){
-                throw new WebApplicationException(
-                        Response.status(Response.Status.FORBIDDEN)
-                                .entity("Não tem permissão para aceder a este recurso.")
-                                .build()
-                );
-            }
-        }*/
-
+        return userEntity;
     }
 
 
-
-    public void verifyAdmin(String token){
+    public void verifyAdmin(String token) {
 
         //verificar se o token do user está válido
-        if(!tokenBean.isTokenValid(token)||token==null){
+        if (token == null || !tokenBean.isTokenValid(token)) {
             throw new WebApplicationException(
                     Response.status(Response.Status.UNAUTHORIZED)
                             .entity("Token Inválido")
@@ -82,7 +72,7 @@ public class UserVerificationBean {
         }
 
         //verificar se o utilizador está activo
-        if(tokenBean.getUserSoftDelete(token)){
+        if (tokenBean.getUserSoftDelete(token)) {
             throw new WebApplicationException(
                     Response.status(Response.Status.FORBIDDEN)
                             .entity("Utilizador inativo")
@@ -91,7 +81,7 @@ public class UserVerificationBean {
         }
 
         //verificar se o utilizador é um admin
-        if (tokenBean.getUserRoleByToken(token)!= UserRoles.ADMIN) {
+        if (tokenBean.getUserRoleByToken(token) != UserRoles.ADMIN) {
             throw new WebApplicationException(
                     Response.status(Response.Status.FORBIDDEN)
                             .entity("Utilizador não é um administrador")
@@ -101,37 +91,103 @@ public class UserVerificationBean {
 
     }
 
-    // --- NOVO MÉTODO ---
+    // ------------------ Metodo para verificar ownership clientes e Leads-----------------------
+
+    /**
+     * Autorização: Garante que apenas o dono do cliente ou um Admin acedam aos dados.
+     * @param token O token de sessão enviado no Header.
+     * @param clientId O ID do cliente que se pretende manipular.
+     */
     public void verifyOwnershipOrAdmin(String token, Long clientId) {
-        // 1. Reaproveita a validação básica (Token válido e User Ativo)
+        //O ID não pode ser nulo
+        if (clientId == null) {
+            throw new WebApplicationException(
+                    Response.status(Response.Status.BAD_REQUEST)
+                            .entity("O ID do Cliente é obrigatório.")
+                            .build()
+            );
+        }
+
+        //Verifica se quem faz o pedido existe e tem sessão válida.
+        // valida token e se o user está ativo.
         verifyUser(token);
 
-        // 2. Obtém o utilizador para verificar o papel (Role) e ID
+        //Recupera o objeto do utilizador para saber o seu Role e ID.
         UserEntity userEntity = tokenBean.getUserEntityByToken(token);
 
-        // 3. Se for ADMIN, ignora o resto e deixa passar
+        // Se o utilizador for Administrador, o método termina aqui (return).
+        // O Admin tem permissão total e ignora as verificações de posse seguintes.
         if (userEntity.getUserRole() == UserRoles.ADMIN) {
             return;
         }
 
-        // 4. Se for USER, temos de verificar se o cliente lhe pertence
+        //Tenta encontrar o cliente na base de dados pelo ID fornecido.
         ClientsEntity client = em.find(ClientsEntity.class, clientId);
 
+        // Se o cliente não existir (ID errado ou apagado), lança 404 Not Found.
+        // Isto evita erros de NullPointer mais à frente no código.
         if (client == null) {
-            throw new WebApplicationException(
-                    Response.status(Response.Status.NOT_FOUND)
+            throw new WebApplicationException(Response.status(Response.Status.NOT_FOUND)
                             .entity("Cliente não encontrado.")
                             .build()
             );
         }
 
-        // 5. Comparação de IDs (Dono do Cliente vs Utilizador do Token)
+        // (OWNERSHIP):
+        // Compara o ID do dono do cliente
+        // com o ID de quem está a pedir
         if (!client.getOwner().getId().equals(userEntity.getId())) {
-            throw new WebApplicationException(
-                    Response.status(Response.Status.FORBIDDEN)
+            // Se os IDs forem diferentes, o acesso é negado (403 Forbidden).
+            // Um utilizador comum não pode "espreitar" os clientes de outros.
+            throw new WebApplicationException(Response.status(Response.Status.FORBIDDEN)
                             .entity("Não tem permissão para aceder a este recurso.")
                             .build()
             );
         }
+    }
+
+
+    /**
+     * Verifica se o utilizador tem permissão para aceder/alterar uma Lead específica.
+     *
+     * @param token  O token de sessão.
+     * @param leadId O ID da lead que se pretende aceder.
+     */
+    public void verifyLeadOwnership(String token, Long leadId) {
+
+        // 1. Validar se o ID foi enviado
+        if (leadId == null) {
+            throw new WebApplicationException(Response.status(Response.Status.BAD_REQUEST)
+                            .entity("O ID da Lead é obrigatório.")
+                            .build()
+            );
+        }
+        // AUTENTICAÇÃO: Reutiliza o verifyUser para garantir que o token é válido e o user está ativo.
+        // Se o token for inválido, o código "morre" aqui e lança 401 ou 403 automaticamente.
+        verifyUser(token);
+
+        // Obtemos a entidade do utilizador para saber quem ele é no sistema.
+        UserEntity user = tokenBean.getUserEntityByToken(token);
+
+        // Se o utilizador for um Administrador, ele tem permissao total
+        // O método termina aqui (return) e permite que o Admin avance para o Bean.
+        if (user.getUserRole() == UserRoles.ADMIN) return;
+
+        // Procuramos a Lead na Base de Dados pelo ID fornecido no URL.
+        LeadEntity lead = em.find(LeadEntity.class, leadId);
+
+        // Se a lead não existir (ou já tiver sido apagada da DB)
+        if (lead == null) {
+            throw new WebApplicationException("Lead não encontrada", 404);
+        }
+
+        // (OWNERSHIP):
+        // Comparamos o ID do dono da Lead com o ID do utilizador que enviou o token.
+        // Se os IDs forem diferentes, significa que um utilizador comum está a tentar aceder a dados de outro.
+        if (!lead.getOwner().getId().equals(user.getId())) {
+            // Bloqueamos o acesso com 403 Forbidden.
+            throw new WebApplicationException("Acesso negado a esta lead", 403);
+        }
+
     }
 }

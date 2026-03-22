@@ -1,19 +1,21 @@
 package aor.paj.projecto4.bean;
 
+import aor.paj.projecto4.dao.UserDao;
+import aor.paj.projecto4.utils.UserRoles;
 import jakarta.ejb.Stateless;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.ws.rs.WebApplicationException;
-import jakarta.ws.rs.core.MediaType;
+
 import jakarta.ws.rs.core.Response;
 import aor.paj.projecto4.dao.ClientsDao;
 import aor.paj.projecto4.dto.ClientsDTO;
 import aor.paj.projecto4.entity.ClientsEntity;
 import aor.paj.projecto4.entity.UserEntity;
-
 import java.util.List;
 import java.util.stream.Collectors;
+
 
 @Stateless
 public class ClientsBean {
@@ -24,20 +26,17 @@ public class ClientsBean {
     @Inject
     ClientsDao clientsDao;
 
+    @Inject
+    UserDao userDao;
+
     @PersistenceContext(unitName = "project3PU")
     private EntityManager em;
 
-    public ClientsBean(TokenBean tokenBean, ClientsDao clientsDao, EntityManager em) {
-        this.tokenBean = tokenBean;
-        this.clientsDao = clientsDao;
-        this.em = em;
-    }
-
     public ClientsBean() {
-    }
+            }
 
     // --- MÉTODOS DE CONVERSÃO (Helper) ---
-    // Centralizar isto evita esqueceres-te do dto.setId() novamente
+    // Centralizar construçao de DTO  Entity to DTO
     private ClientsDTO toDTO(ClientsEntity entity) {
         ClientsDTO dto = new ClientsDTO();
         dto.setId(entity.getId());
@@ -48,67 +47,101 @@ public class ClientsBean {
         return dto;
     }
 
+    //DTO para Entity do zero
+    private ClientsEntity toEntity(ClientsDTO dto, UserEntity owner) {
+        ClientsEntity entity = new ClientsEntity();
+        entity.setName(dto.getName());
+        entity.setEmail(dto.getEmail());
+        entity.setPhone(dto.getPhone());
+        entity.setOrganization(dto.getOrganization());
+        entity.setOwner(owner);
+        entity.setSoftDelete(false);
+        return entity;
+    }
+
+    // meetodo para editar um cliente e nao mexer no owner nem no softdelete
+    private void updateEntityFromDTO(ClientsEntity entity, ClientsDTO dto) {
+        entity.setName(dto.getName());
+        entity.setEmail(dto.getEmail());
+        entity.setPhone(dto.getPhone());
+        entity.setOrganization(dto.getOrganization());
+
+    }
+
+    /**
+     * Converte uma lista de Entidades (Base de Dados) para uma lista de DTOs (Frontend).
+     */
     private List<ClientsDTO> toDTOList(List<ClientsEntity> entities) {
-        return entities.stream().map(this::toDTO).collect(Collectors.toList());
+        return entities.stream() // 1. Cria um "fluxo" de dados a partir da lista de entidades
+                .map(this::toDTO) // 2. Para cada entidade no fluxo, chama o teu método 'toDTO' para a transformar
+                .collect(Collectors.toList()); // 3. Reagrupa todos os DTOs transformados numa nova Lista
     }
 
     // --- MÉTODOS DE ESCRITA ---
 
-    public void addClient(String token, ClientsDTO dto) {
+    public ClientsDTO addClient(String token, ClientsDTO dto) {
+        // 1. Obtém o dono através do token (o Service já garantiu que o token é válido)
         UserEntity owner = tokenBean.getUserEntityByToken(token);
-        if (owner == null) {
-            throw new WebApplicationException(Response.status(401).entity("Sessão inválida.").type(MediaType.TEXT_PLAIN).build());
-        }
 
-        if (isEmailDuplicated(dto.getEmail(), owner)) {
-            throw new WebApplicationException(Response.status(409).entity("Este email já existe para este utilizador").type(MediaType.TEXT_PLAIN).build());
-        }
+        // 2. Transforma o DTO numa Entity pronta para a BD
+        // O teu método toEntity já define o owner e o softDelete = false
+        ClientsEntity newClient = toEntity(dto, owner);
 
-        ClientsEntity newClient = new ClientsEntity();
-        newClient.setName(dto.getName());
-        newClient.setEmail(dto.getEmail());
-        newClient.setPhone(dto.getPhone());
-        newClient.setOrganization(dto.getOrganization());
-        newClient.setSoftDelete(false);
+        // 3. Persiste na Base de Dados
+        // Se o email for duplicado para este owner, a BD lança uma exceção.
+        // O GenericExceptionMapper apanha e envia o ErrorResponse(409/400)
+        em.persist(newClient);
 
-        owner.addClient(newClient);
-        // Hibernate faz persist(newClient) via Cascade ou owner.getClients().add()
+        // 4. Retorna o DTO com o ID que a base de dados acabou de gerar
+        return toDTO(newClient);
     }
 
-    public void editClient(String token, Long clientId, ClientsDTO dto) {
+    public ClientsDTO editClient(Long clientId, ClientsDTO dto) {
+        // 1. Procura a entidade existente
         ClientsEntity client = em.find(ClientsEntity.class, clientId);
+
+        // 2. Valida se o cliente existe e não está na lixeira
         if (client == null || client.isSoftDelete()) {
-            throw new WebApplicationException(Response.status(404).entity("Cliente não encontrado").build());
+            throw new WebApplicationException("Cliente não encontrado", Response.Status.NOT_FOUND);
         }
 
-        // Validação de email: apenas se o email for alterado
-        if (!client.getEmail().equalsIgnoreCase(dto.getEmail())) {
-            if (isEmailDuplicated(dto.getEmail(), client.getOwner())) {
-                throw new WebApplicationException(Response.status(409).entity("Email já em uso.").build());
-            }
-        }
-
+        // 3. Atualiza os campos permitidos (O Owner NUNCA é alterado aqui)
         client.setName(dto.getName());
         client.setEmail(dto.getEmail());
         client.setPhone(dto.getPhone());
         client.setOrganization(dto.getOrganization());
+
+        // 4. Converte para DTO e devolve
+        // Se houver conflito de email na BD, o GenericExceptionMapper envia o erro 409
+        return toDTO(client);
     }
 
     // --- MÉTODOS DE LISTAGEM (DTO) ---
 
-    public List<ClientsDTO> listAllClients(String token) {
-        // Chame a query que filtra os softDeletes
-        List<ClientsEntity> entities = em.createNamedQuery("ClientsEntity.findAdminActive", ClientsEntity.class)
-                .getResultList();
+     /**
+     * Lista todos os clientes ativos associados ao utilizador do token.
+     * Utiliza Streams para transformar Entidades em DTOs de forma eficiente e segura.
+     */
+    public List<ClientsDTO> listClients(String token, Long userId) {
+        // 1. Quem está a pedir? (O Verifier já validou, mas precisamos da entidade aqui)
+        UserEntity requester = tokenBean.getUserEntityByToken(token);
+        if (requester == null) {
+            throw new WebApplicationException("Sessão inválida", Response.Status.UNAUTHORIZED);
+        }
 
+        // 2. Definir o filtro de ID (A lógica de "Poder")
+        Long filterId = userId;
+
+        // Se NÃO for Admin, ignoramos o userId que veio do React e forçamos o dele
+        if (requester.getUserRole() != UserRoles.ADMIN) {
+            filterId = requester.getId();
+        }
+
+        // 3. Buscar na BD (O DAO decide se filtra por ID ou traz tudo se for null)
+        List<ClientsEntity> entities = clientsDao.findActiveWithOptionalFilter(filterId);
+
+        // 4. Converter usando o teu Helper toDTOList (Limpeza total!)
         return toDTOList(entities);
-    }
-
-    public List<ClientsDTO> listAllMyClientsDTO(String token) {
-        UserEntity user = tokenBean.getUserEntityByToken(token);
-        if (user == null) throw new WebApplicationException(401);
-
-        return toDTOList(clientsDao.findActiveByOwner(user.getId()));
     }
 
     public List<ClientsDTO> listDeletedClientsDTO(String token) {
@@ -119,37 +152,79 @@ public class ClientsBean {
     }
 
     /**
-     * Requisito A6: Devolve a lista de clientes ativos criados por um utilizador específico.
-     * Utiliza o método findActiveByOwner já existente no ClientsDao.
+     * Requisito A6: Devolve a lista de clientes ativos de um utilizador específico (para Admin).
      */
     public List<ClientsDTO> listClientsByUser(Long userId) {
-        List<ClientsEntity> entities = clientsDao.findActiveByOwner(userId);
+        // 1. Procurar o utilizador alvo na base de dados pelo ID (usando o UsersDao)
+        // Aqui não usamos o token, pois o Admin quer ver os clientes de OUTRO utilizador
+        UserEntity targetOwner = userDao.find(userId);
+
+        if (targetOwner == null) {
+            throw new WebApplicationException(Response.status(404).entity("Utilizador não encontrado.").build());
+        }
+
+        // 2. Chamar o método do DAO que já criámos e que aceita a Entity
+        List<ClientsEntity> entities = clientsDao.findActiveByOwner(targetOwner);
+
+        // 3. Converter a lista de entidades para DTOs (usando o teu método privado)
         return toDTOList(entities);
     }
 
-
     // --- MÉTODOS DE ELIMINAÇÃO/RESTAURO ---
 
-    public void softDeleteClient(Long clientId) {
+    public ClientsDTO softDeleteClient(Long clientId) {
+        // 1. Procura a entidade na Base de Dados
         ClientsEntity client = em.find(ClientsEntity.class, clientId);
-        if (client != null) client.setSoftDelete(true);
-    }
-
-    public void restoreClient(Long clientId) {
-        ClientsEntity client = em.find(ClientsEntity.class, clientId);
-        if (client != null) client.setSoftDelete(false);
-    }
-
-    public void permanentDeleteClient(Long clientId) {
-        ClientsEntity client = em.find(ClientsEntity.class, clientId);
-        if (client != null) {
-            UserEntity owner = client.getOwner();
-            if (owner != null) owner.removeClient(client);
-            em.remove(client);
-        } else {
-            // Se não encontrar, avisa o Service
-            throw new WebApplicationException("Cliente não encontrado", 404);
+        // 2. Verificação de Existência e Estado
+        // Se o cliente não existir ou já estiver apagado, lançamos 404.
+        // O GenericExceptionMapper vai criar o ErrorResponse
+        if (client == null || client.isSoftDelete()) {
+            throw new WebApplicationException("Cliente nao encontrado");
         }
+        // 3. Execução da Operação
+        client.setSoftDelete(true);
+        // 4. Converte para DTO antes de devolver
+        return toDTO(client);
+
+        // O Hibernate/JPA fará o flush automático para a BD no final da transação
+    }
+
+    public ClientsDTO restoreClient(Long clientId) {
+        ClientsEntity client = em.find(ClientsEntity.class, clientId);
+        if (client == null) {
+            throw new WebApplicationException("Cliente não encontrado", Response.Status.NOT_FOUND);
+        }
+
+        if (!client.isSoftDelete()) {
+            throw new WebApplicationException("Cliente já se encontra em estado ativo",  Response.Status.CONFLICT);
+        }
+
+        client.setSoftDelete(false);
+
+        return toDTO(client);
+    }
+
+    public ClientsDTO permanentDeleteClient(Long clientId) {
+        // 1. Procura a entidade
+        ClientsEntity client = em.find(ClientsEntity.class, clientId);
+
+        // 2. Valida existência
+        if (client == null) {
+            throw new WebApplicationException("Cliente não encontrado", Response.Status.NOT_FOUND);
+        }
+
+        // 3. Regra de Negócio: Só permitimos apagar permanentemente o que já passou pela "Lixeira"
+        if (!client.isSoftDelete()) {
+            throw new WebApplicationException("O cliente deve estar na lixeira antes de ser removido permanentemente", Response.Status.CONFLICT);
+        }
+
+        // 4. Mapeamos para DTO ANTES de remover, para poder devolver a informação ao Frontend
+        ClientsDTO dto = toDTO(client);
+
+        // 5. REMOÇÃO FÍSICA da Base de Dados
+        em.remove(client);
+
+        return dto;
     }
 
     // --- MÉTODOS EM MASSA ---
@@ -159,10 +234,12 @@ public class ClientsBean {
      * Apaga (soft delete) todos os clientes criados por um utilizador específico.
      */
     public void softDeleteAllClientsByUser(Long userId) {
-        List<ClientsEntity> clients = clientsDao.findActiveByOwner(userId);
+
+        UserEntity targetOwner = userDao.find(userId);
+        if (targetOwner == null) throw new WebApplicationException(404);
+        List<ClientsEntity> clients = clientsDao.findActiveByOwner(targetOwner);
         for (ClientsEntity c : clients) {
             c.setSoftDelete(true);
-            em.merge(c); // Força a gravação na base de dados!
         }
     }
 
@@ -170,10 +247,24 @@ public class ClientsBean {
      * Restaura todos os clientes apagados de um utilizador específico.
      */
     public void unSoftDeleteAllClientsByUser(Long userId) {
-        List<ClientsEntity> clients = clientsDao.findDeletedByOwner(userId);
-        for (ClientsEntity c : clients) {
+        // 1. Validar utilizador alvo
+        UserEntity targetOwner = userDao.find(userId);
+        if (targetOwner == null) {
+            throw new WebApplicationException("Utilizador não encontrado", Response.Status.NOT_FOUND);
+        }
+
+        // 2. Procurar apenas os clientes que estão atualmente na lixeira (softDelete = true)
+        // Usamos o ID do utilizador para filtrar na NamedQuery que já tens
+        List<ClientsEntity> deletedClients = clientsDao.findDeletedByOwner(userId);
+
+        // 3. Se a lixeira estiver vazia, não há nada a fazer
+        if (deletedClients.isEmpty()) {
+            throw new WebApplicationException("O utilizador não tem clientes na lixeira para restaurar", Response.Status.NOT_MODIFIED);
+        }
+
+        // 4. Restaurar todos (O JPA faz o update automático no commit da transação)
+        for (ClientsEntity c : deletedClients) {
             c.setSoftDelete(false);
-            em.merge(c); // Força a gravação na base de dados!
         }
     }
 
@@ -194,21 +285,16 @@ public class ClientsBean {
     }
 
     public List<ClientsDTO> listDeletedClientsByUser(Long userId) {
+        // 1. Validar se o utilizador "alvo" existe (Segurança de Dados)
+        if (userDao.find(userId) == null) {
+            throw new WebApplicationException("Utilizador não encontrado", Response.Status.NOT_FOUND);
+        }
+        // 2. A tua lógica original (Limpa e Eficiente)
+        // O toDTOList é uma excelente prática para evitar loops espalhados pelo código.
         return toDTOList(clientsDao.findDeletedByOwner(userId));
     }
 
-    public boolean emptyClientsTrash(Long userId) {
-        if (userId != null) {
-            List<ClientsEntity> clients = clientsDao.findDeletedByOwner(userId);
-            if (clients != null) {
-                for (ClientsEntity c : clients) {
-                    clientsDao.hardDelete(c.getId());
-                }
-                return true;
-            }
-        }
-        return false;
-    }
+
 
     public boolean emptyTrash(Long userId) {
         try {
@@ -224,39 +310,22 @@ public class ClientsBean {
         }
     }
 
-    public boolean createClientForUser(Long userId, ClientsDTO dto) {
-        try {
-            // 1. Procurar o utilizador alvo diretamente via EntityManager
-            UserEntity owner = em.find(UserEntity.class, userId);
+    public ClientsDTO createClientForUser(Long userId, ClientsDTO dto) {
+        // 1. Procurar o utilizador alvo (Melhor usar o DAO específico de User)
+        UserEntity targetOwner = userDao.find(userId);
 
-            // Se o utilizador não existir, abortamos
-            if (owner == null) {
-                return false;
-            }
-
-            // 2. Validar se o email já existe para este utilizador (usando o método que já criaste)
-            if (isEmailDuplicated(dto.getEmail(), owner)) {
-                return false;
-            }
-
-            // 3. Criar e mapear a entidade
-            ClientsEntity newClient = new ClientsEntity();
-            newClient.setName(dto.getName());
-            newClient.setEmail(dto.getEmail());
-            newClient.setPhone(dto.getPhone());
-            newClient.setOrganization(dto.getOrganization());
-            newClient.setSoftDelete(false);
-
-            // 4. Associar ao dono (Owner)
-            newClient.setOwner(owner);
-
-            // 5. Persistir usando o clientsDao que já tens injetado
-            clientsDao.persist(newClient);
-
-            return true;
-        } catch (Exception e) {
-            System.err.println("Erro ao criar cliente para utilizador: " + e.getMessage());
-            return false;
+        // 2. Se o ID não existir, lançamos 404 (O GenericExceptionMapper trata o resto)
+        if (targetOwner == null) {
+            throw new WebApplicationException("Utilizador alvo não encontrado", Response.Status.NOT_FOUND);
         }
+
+        // 3. Reutilizar o teu mapeador toEntity (Dono + softDelete=false)
+        ClientsEntity newClient = toEntity(dto, targetOwner);
+
+        // 4. Persistir (A BD valida a @UniqueConstraint email+owner)
+        em.persist(newClient);
+
+        // 5. Devolver o DTO (Padrão profissional: devolve o que foi criado)
+        return toDTO(newClient);
     }
 }

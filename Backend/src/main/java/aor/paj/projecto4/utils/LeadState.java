@@ -23,7 +23,8 @@ public enum LeadState {
         for (LeadState state : values()) {
             if (state.leadStateId == id) return state;
         }
-        throw new IllegalArgumentException("ID de estado inválido: " + id);
+        // Lançar uma exceção que o JAX-RS reconhece como erro do cliente (400)
+        throw new jakarta.ws.rs.BadRequestException("ID de estado inválido: " + id);
     }
 }
 

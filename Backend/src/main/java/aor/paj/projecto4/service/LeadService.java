@@ -1,6 +1,8 @@
 package aor.paj.projecto4.service;
 
+import aor.paj.projecto4.exception.ErrorResponse;
 import jakarta.inject.Inject;
+import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -9,6 +11,7 @@ import aor.paj.projecto4.bean.LoginBean;
 import aor.paj.projecto4.dto.LeadDTO;
 
 import java.util.ArrayList;
+import java.util.List;
 
 @Path("/users")
 public class LeadService {
@@ -20,455 +23,229 @@ public class LeadService {
     @Inject
     UserVerificationBean verifier;
 
-    /**
-     * Devolve todos os leads de um utilizador
-     * @param token o token do utilizador
-     * @return a resposta adequada
-     */
-    @GET
-    @Path("/me/leads")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getLeadDTOs(
-            @HeaderParam("token") String token
-    ) {
-
-        //validar o utilizador
-        verifier.verifyUser(token);
-
-        //funcionalidade
-        ArrayList<LeadDTO> leads=leadsBean.getLeadDTOsByToken(token);
-        if (leads != null) return Response.ok(leads).build();
-        return Response.status(Response.Status.NOT_FOUND).build();
-    }
-
 
     /**
-     * ir buscar um lead por id
-     * @param leadId o id do lead
-     * @param token o token do utilizador
-     * @return
-     */
-    @GET
-    @Path ("/me/leads/{leadId}")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getLeadByUserIdLeadId(
-            //@PathParam("userId") Long resourceId,
-            @PathParam("leadId") Long leadId,
-            @HeaderParam("token") String token
-            ){
-
-
-        //validar o utilizador
-        verifier.verifyUser(token);
-
-        //funcionalidade
-        LeadDTO leadDTO=leadsBean.getLeadDTOByTokenLeadId(token,leadId);
-        //antes disto temos que verificar se encontramos efetivamente esse lead
-        if(leadDTO==null){
-            return Response.status(Response.Status.NOT_FOUND).entity("Lead não encontrado para o id fornecido").build();
-
-        }
-        return Response.ok(leadDTO).build();
-    }
-
-    /**
-     * U3 Adicionar um lead ao user
-     * @param leadDTO o DTO do lead
-     * @param token o token do user
-     * @return a resposta adequada
+     * Adicionar um lead ao utilizador autenticado.
+     * O uso de @Valid garante que campos vazios sejam travados pelo ValidationExceptionMapper.
      */
     @POST
-    @Path("/me/leads")
+    @Path("/leads")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response createLead(
-            //@PathParam("userId") Long resourceId,
-            LeadDTO leadDTO,
-            @HeaderParam("token") String token
-    ) {
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response createLead(@HeaderParam("token") String token,
+                               @Valid LeadDTO leadDTO) {
 
-        //validar o utilizador
+        // 1. Segurança: Verifica se o token é válido e o utilizador está ativo
         verifier.verifyUser(token);
-
-        //funcionalidade
-        boolean success=leadsBean.addLeadDTOToUser(token, leadDTO);
-
-        //se bem sucedido
-        if(success){
-            return Response.status(Response.Status.CREATED).build();
-        }
-
-        //se mal sucedido
-        return Response.status(Response.Status.INTERNAL_SERVER_ERROR) // 500
-                .entity("Erro ao processar a criação do lead.")
-                .build();
-
+        // 2. Lógica: O Bean cria a lead e já nos devolve o DTO com o ID gerado
+        LeadDTO created = leadsBean.addLead(token, leadDTO);
+        // 3. Resposta: Status 201 (Created) enviando o objeto completo para o React
+        return Response.status(Response.Status.CREATED).entity(created).build();
     }
 
+    /**
+     * Devolve a lista de leads associada ao utilizador autenticado.
+     * Utilizado tanto pela página de gestão de leads como pelo Dashboard para contagens.
+     */
+    @GET
+    @Path("/leads") // Seguindo a decisão de tirar o /me para ser igual a /clients
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getLeads(@HeaderParam("token") String token) {
+
+        // 1. Segurança: Valida token e se o utilizador está ativo.
+        // Se falhar, lança 401 ou 403 e o método para aqui.
+        verifier.verifyUser(token);
+
+        // 2. Lógica: O Bean procura as entidades e converte-as para DTOs.
+        // Usamos List (interface) em vez de ArrayList (implementação).
+        List<LeadDTO> leads = leadsBean.getLeadsByToken(token);
+
+        // 3. Resposta: Retornamos a lista (mesmo que esteja vazia, é um 200 OK com []).
+        return Response.ok(leads).build();
+    }
 
     /**
-     * U5 e U6 Edita um lead através de uma chamada put
-     * @param leadId id do lead
-     * @param leadDTO o json do lead
-     * @param token o token do user
-     * @return a resposta adequada
+     * Obter uma lead específica pelo ID.
+     * O verifier garante: Token válido, User ativo, Existência da lead e Posse/Admin.
      */
+    @GET
+    @Path("/leads/{leadId}") // Retiramos o /me para padronizar com /clients
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getLeadById(@HeaderParam("token") String token,
+                                @PathParam("leadId") Long leadId) {
+
+        //Esta única linha faz todo o trabalho
+        // Se não for o dono ou admin, ou se a lead não existir, lança logo a exceção (401, 403 ou 404).
+        verifier.verifyLeadOwnership(token, leadId);
+
+        // 2. LÓGICA: Se o código chegou aqui, é porque a lead existe e o user tem permissão.
+        // O Bean agora só precisa de ir buscar e converter.
+        LeadDTO lead = leadsBean.getLeadById(leadId);
+
+        // 3. RESPOSTA: Sucesso garantido.
+        return Response.ok(lead).build();
+    }
+
     @PUT
-    @Path("/me/leads/{leadId}")
+    @Path("/leads/{leadId}")
     @Consumes(MediaType.APPLICATION_JSON)
-    @Produces (MediaType.APPLICATION_JSON)
-    public Response putLeadDTOByUserIdLeadId(
-            //@PathParam("userId") Long resourceID,
-            @PathParam("leadId") Long leadId,
-            LeadDTO leadDTO,
-            @HeaderParam("token") String token
-    ){
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response updateLead(@HeaderParam("token") String token,
+                               @PathParam("leadId") Long leadId,
+                               @Valid LeadDTO leadDTO) {
 
-        //validar o utilizador
-        verifier.verifyUser(token);
+        // 1. O "polícia" faz todas as verificações de token e posse
+        verifier.verifyLeadOwnership(token, leadId);
 
-        //funcionalidade
-        boolean success=leadsBean.putLeadDTOByTokenLeadId(token, leadId,leadDTO);
-        //se bem sucedido
-        if(success) {
-            return Response.ok().build();
-        }
+        // 2. O Bean executa apenas a atualização dos dados
+        LeadDTO updated = leadsBean.editLead(leadId, leadDTO);
 
-        //se mal sucedido
-        return Response.status(Response.Status.INTERNAL_SERVER_ERROR) // 500
-                .entity("Erro ao processar a edição do lead.")
-                .build();
+        return Response.ok(updated).build();
     }
 
 
     /**
-     *Faz o soft delete de um lead
-     * @param leadId o id do lead
-     * @param token o token
-     * @return a resposta adequada
+     * U7 Soft Delete de Lead usando o verbo DELETE.
      */
-    @POST
-    @Path("/me/leads/{leadId}/softdelete")
-    @Produces (MediaType.APPLICATION_JSON)
-    public Response softDelLeadById(
-            //@PathParam("userId") Long resourceId,
-            @PathParam("leadId") Long leadId,
-            @HeaderParam("token") String token
-    ){
-        //validar o utilizador
-        verifier.verifyUser(token);
+    @DELETE
+    @Path("/leads/{leadId}") // URL limpa e profissional
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response deleteLead(@HeaderParam("token") String token,
+                               @PathParam("leadId") Long leadId) {
 
-        //funcionalidade
-        boolean deleted=leadsBean.softDelLeadById(leadId,token);
+        // A segurança continua a ser a mesma
+        verifier.verifyLeadOwnership(token, leadId);
 
-        //resposta
-        if(deleted) {
-            return Response.ok().build();
-        }
+        // O Bean faz o mesmo trabalho (setSoftDelete(true))
+        leadsBean.softDeleteLead(leadId);
 
-        //se mal sucedido
-        return Response.status(Response.Status.INTERNAL_SERVER_ERROR) // 500
-                .entity("Erro ao processar o soft delete do lead.")
-                .build();
-
+        return Response.ok(new ErrorResponse("Lead eliminada com sucesso", 200)).build();
     }
 
 
     //*************************Secção do Administrador***************************************************************
 
     /**
-     * Adicionar Leads a um utilizador
-     * @param userId o id do user
-     * @param token o token do admin
-     * @param leadDTO o lead a adicionar
-     * @return a resposta adequada
+     * Lista todas as leads do sistema com filtros dinâmicos.
+     * Lista TUDO. Pode filtrar por user, por estado ou ver o que está na lixeira usando @QueryParam.
+     */
+    @GET
+    @Path("/admin/leads")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response adminGetLeads(
+            @HeaderParam("token") String token,
+            @QueryParam("state") Integer stateId,          // Opcional
+            @QueryParam("userId") Long userId,             // Opcional
+            @QueryParam("softDeleted") Boolean softDeleted // Opcional (true/false)
+    ) {
+        // 1. Segurança: Apenas Admins entram aqui
+        verifier.verifyAdmin(token);
+        // 2. Lógica: O Bean constrói a Query baseada nos filtros enviados
+        List<LeadDTO> leads = leadsBean.getLeadsWithFilters(stateId, userId, softDeleted);
+        return Response.ok(leads).build();
+    }
+
+
+    /**
+     * Super Put Admin: Edita qualquer lead do sistema,
+     * inclusive para fazer "Undelete"Edita qualquer lead do sistema, inclusive para fazer "Undelete"
+     */
+    @PUT
+    @Path("/admin/leads/{leadId}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response superAdminUpdate(
+            @HeaderParam("token") String token,
+            @PathParam("leadId") Long leadId,
+            LeadDTO dto // O DTO traz os novos valores (título, estado, ownerId, softDelete)
+    ) {
+        // 1. Segurança: Apenas Admins ativos
+        verifier.verifyAdmin(token);
+
+        // 2. Execução: O Bean atualiza a entidade com base no que o DTO trouxer
+        LeadDTO updated = leadsBean.adminSuperEdit(leadId, dto);
+
+        return Response.ok(updated).build();
+    }
+
+
+    /**
+     * Admin: Cria uma nova lead e atribui-a a um utilizador específico.
      */
     @POST
     @Path("/admin/{userId}/leads")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response adminAddLeadDTOToUser(
-            @PathParam("userId") Long userId,
-            @HeaderParam("token") String token,
-            LeadDTO leadDTO
-    ){
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response adminAddLeadToUser(@HeaderParam("token") String token,
+                                       @PathParam("userId") Long userId,
+                                       @Valid LeadDTO leadDTO) {
 
-        //validar o administrador
+        // 1. Segurança: Verifica se quem chama é um ADMIN ativo
         verifier.verifyAdmin(token);
-        //funcionalidade
-        boolean success=leadsBean.addLeadDTOToUserByUserId(userId, leadDTO);
 
-        //se bem sucedido
-        if(success){
-            return Response.status(Response.Status.CREATED).build();
-        }
+        // 2. Execução: O Bean cria a lead para o utilizador de destino
+        LeadDTO created = leadsBean.addLeadToUser(userId, leadDTO);
 
-        //se mal sucedido
-        return Response.status(Response.Status.INTERNAL_SERVER_ERROR) // 500
-                .entity("Erro ao processar a criação do lead.")
-                .build();
-
-    }
-
-    /**
-     * A2 Editar um lead de um utilizador
-     * @param userId o id do utilizador
-     * @param leadId o id da lead a editar
-     * @param token o token do admin
-     * @param leadDTO  a nova versão do lead
-     * @return a resposta adequada
-     */
-    @PUT
-    @Path("/admin/{userId}/leads/{leadId}")
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response adminUpdateLeadDTOToUser(
-            @PathParam("userId") Long userId,
-            @PathParam("leadId") Long leadId,
-            @HeaderParam("token") String token,
-            LeadDTO leadDTO
-    ){
-
-        //validar o administrador
-        verifier.verifyAdmin(token);
-        //funcionalidade
-        boolean success=leadsBean.adminUpdateLeadDTO( userId,  leadId,  leadDTO);
-
-        //se bem sucedido
-        if(success){
-            return Response.status(Response.Status.CREATED).build();
-        }
-
-        //se mal sucedido
-        return Response.status(Response.Status.INTERNAL_SERVER_ERROR) // 500
-                .entity("Erro ao processar a criação do lead.")
-                .build();
-
+        // 3. Resposta: 201 Created com o objeto completo
+        return Response.status(Response.Status.CREATED).entity(created).build();
     }
 
 
-
     /**
-     * A13 Hard delete de um lead
-     * @param resourceId id do user
-     * @param leadId id do lead
-     * @param token o token do user
-     * @return a resposta adequada
+     * Hard Delete: Remove permanentemente a lead da base de dados.
+     * Apenas acessível por Administradores.
      */
     @DELETE
-    @Path("/admin/{userId}/leads/{leadId}")
-    public Response delLeadById(
-            @PathParam("userId") Long resourceId,
-            @PathParam("leadId") Long leadId,
-            @HeaderParam("token") String token
-    ){
+    @Path("/admin/leads/{leadId}")
+    public Response hardDelete(@HeaderParam("token") String token,
+                               @PathParam("leadId") Long leadId) {
 
-        //validar o administrador
+        // 1. Segurança: Só admins entram
         verifier.verifyAdmin(token);
-
-        //funcionalidade
-        boolean deleted=leadsBean.hardDelLeadById(leadId);
-
-        //resposta
-        if(deleted) {
-            return Response.ok().build();
-        }
-
-        //se mal sucedido
-        return Response.status(Response.Status.INTERNAL_SERVER_ERROR) // 500
-                .entity("Erro ao processar o hard delete do lead.")
-                .build();
+        // 2. Execução: Remove a linha da tabela
+        leadsBean.hardDeleteLead(leadId);
+        // 3. Resposta: 204 No Content (sucesso para remoções definitivas)
+        return Response.noContent().build();
     }
 
-
     /**
-     * A11 soft delete de todos os leads de um utilizador
-     * @param resourceId o id do user
-     * @param token o token do user
-     * @return a resposta adequada
+     * A11 Soft Delete em lote: Marca todas as leads de um utilizador como eliminadas.
+     * Útil para quando um utilizador sai da empresa ou muda de departamento.
      */
     @POST
     @Path("/admin/{userId}/leads/softdeleteall")
-    public Response softDelAllUserLeads(
-            @PathParam("userId") Long resourceId,
-            @HeaderParam("token") String token
-    ){
-        //validar o administrador
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response softDeleteAllFromUser(@HeaderParam("token") String token,
+                                          @PathParam("userId") Long userId) {
+
+        // 1. Segurança: Apenas administradores
         verifier.verifyAdmin(token);
 
-        //funcionalidade
-        //boolean deleted=leadsBean.softDelALlUserLeads(token);
-        boolean deleted=leadsBean.softDelALlUserLeadsAdmin(resourceId);
+        // 2. Execução: O Bean faz o update em massa
+        int totalAlterado = leadsBean.softDeleteAllFromUser(userId);
 
-        //resposta
-        if(deleted) {
-            return Response.ok().build();
-        }
-
-        //se mal sucedido
-        return Response.status(Response.Status.INTERNAL_SERVER_ERROR) // 500
-                .entity("Erro ao processar o hard delete do lead.")
-                .build();
+        // 3. Resposta: Informamos o React de quantas leads foram "limpas"
+        return Response.ok(new ErrorResponse(totalAlterado + " leads movidas para a lixeira.", 200)).build();
     }
 
-
     /**
-     * Undelete de todos os leads de um utilizador
-     * @param resourceId o id do utilizador
-     * @param token o token do admin
-     * @return a resposta adequada
+     * Ações em lote: Recupera todas as leads de um utilizador que estavam na lixeira.
+     * Útil para reverter um erro ou quando um utilizador volta a ficar ativo.
      */
     @POST
     @Path("/admin/{userId}/leads/softundeleteall")
-    public Response softUnDelAllUserLeads(
-            @PathParam("userId") Long resourceId,
-            @HeaderParam("token") String token
-    ){
-        //validar o administrador
-        verifier.verifyAdmin(token);
-
-        //funcionalidade
-        boolean deleted=leadsBean.softUnDelALlUserLeadsAdmin(resourceId);
-
-        //resposta
-        if(deleted) {
-            return Response.ok().build();
-        }
-
-        //se mal sucedido
-        return Response.status(Response.Status.INTERNAL_SERVER_ERROR) // 500
-                .entity("Erro ao processar o hard delete do lead.")
-                .build();
-    }
-
-
-    /**
-     * Obtém todos os leads com soft delete de um determinado utilizador
-     * @param resourceId o id do utilizador
-     * @param token o token do administrador
-     * @return a resposta adequada
-     */
-    @GET
-    @Path("/admin/{userId}/leads/softdeleted/all")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getSoftDelUserLeads(
-            @PathParam("userId") Long resourceId,
-            @HeaderParam("token") String token
-    ){
-        //validar o administrador
+    public Response undeleteAllFromUser(@HeaderParam("token") String token,
+                                        @PathParam("userId") Long userId) {
+
+        // 1. Segurança: Verificação de Administrador
         verifier.verifyAdmin(token);
 
-        //funcionalidade
-        ArrayList<LeadDTO> leads = leadsBean.getSoftDelLeadsByUserId(resourceId);
+        // 2. Execução: O Bean executa o Update em massa na BD
+        int totalRecuperado = leadsBean.undeleteAllFromUser(userId);
 
-        //resposta se bem sucedido
-        if (leads != null) return Response.ok(leads).build();
-
-        //resposta se mal sucedido
-        return Response.status(Response.Status.NOT_FOUND).build();
-    }
-
-    /**
-     * A4 Faz o soft delete de um lead
-     * @param leadId o id do lead
-     * @param token o token
-     * @return a resposta adequada
-     */
-    @POST
-    @Path("/admin/{userId}/leads/{leadId}/softdelete")
-    @Produces (MediaType.APPLICATION_JSON)
-    public Response softDelLeadByIdAdmin(
-            @PathParam("userId") Long resourceId,
-            @PathParam("leadId") Long leadId,
-            @HeaderParam("token") String token
-    ){
-        //validar o utilizador
-        verifier.verifyAdmin(token);
-
-        //funcionalidade
-        boolean deleted=leadsBean.adminSoftDelLeadById(leadId);
-
-        //resposta
-        if(deleted) {
-            return Response.ok().build();
-        }
-
-        //se mal sucedido
-        return Response.status(Response.Status.INTERNAL_SERVER_ERROR) // 500
-                .entity("Erro ao processar o soft delete do lead.")
-                .build();
-
-    }
-
-    /**
-     * Faz o soft undelete do lead
-     * @param resourceId o id do utilizador
-     * @param leadId o id do lead
-     * @param token o token
-     * @return a resposta adequada
-     */
-    @POST
-    @Path("/admin/{userId}/leads/{leadId}/softundelete")
-    @Produces (MediaType.APPLICATION_JSON)
-    public Response softUnDelProjectByIdAdmin(
-            @PathParam("userId") Long resourceId,
-            @PathParam("leadId") Long leadId,
-            @HeaderParam("token") String token
-    ){
-        //validar o utilizador
-        verifier.verifyAdmin(token);
-
-        //funcionalidade
-        boolean deleted=leadsBean.softUnDelLeadById(leadId);
-
-        //resposta
-        if(deleted) {
-            return Response.ok().build();
-        }
-
-        //se mal sucedido
-        return Response.status(Response.Status.INTERNAL_SERVER_ERROR) // 500
-                .entity("Erro ao processar o soft undelete do lead.")
-                .build();
-
-    }
-
-    /**
-     * A7 Devolve todos os leads de um utilizador
-     * @param token o token do utilizador
-     * @return a resposta adequada
-     */
-    @GET
-    @Path("/admin/{userId}/leads")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getLeadDTOsFromUser(
-            @PathParam("userId") Long resourceId,
-            @HeaderParam("token") String token
-    ) {
-
-        //validar o utilizador
-        verifier.verifyAdmin(token);
-
-        //funcionalidade
-        ArrayList<LeadDTO> leadDTOs = leadsBean.getLeadDTOsByUserId(resourceId);
-
-        if (leadDTOs != null) return Response.ok(leadDTOs).build();
-        return Response.status(Response.Status.NOT_FOUND).build();
-    }
-
-    //A8
-    @GET
-    @Path("/admin/leads/state/{state}")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getAllLeadsByState(
-            @PathParam("state") int stateId,
-            @HeaderParam("token") String token
-    ){
-        //validar o utilizador
-        verifier.verifyAdmin(token);
-
-        //funcionalidade
-        ArrayList<LeadDTO> leadDTOs=leadsBean.getLeadDTOsByState(stateId);
-
-        if (leadDTOs != null) return Response.ok(leadDTOs).build();
-        return Response.status(Response.Status.NOT_FOUND).build();
+        // 3. Resposta: Informamos o Admin do impacto da ação
+        return Response.ok(new ErrorResponse(totalRecuperado + " leads recuperadas com sucesso.", 200)).build();
     }
 
 }

@@ -1,6 +1,9 @@
 package aor.paj.projecto4.dto;
 
+import aor.paj.projecto4.utils.LeadState;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.json.bind.annotation.JsonbTransient;
 
 import java.time.LocalDateTime;
 
@@ -8,25 +11,26 @@ public class LeadDTO {
 
     private Long id;
 
-    //@NotNull(message = "O estado do lead é obrigatório")
-    private int state = 1;
+    @NotNull(message = "O estado da lead é obrigatório")
+    private LeadState state = LeadState.NOVO;
 
     @NotBlank(message = "O Título do lead não pode estar vazio")
     private String title;
 
-    @NotBlank(message = "A Descrição do lead não pode estar vazio")
+    @NotBlank(message = "A Descrição da lead não pode estar vazio")
     private String description;
 
     private LocalDateTime date;
-
+    private boolean softDelete;
 
     public LeadDTO(Long id, String titulo, String descricao) {
-        this.id=id;
+        this.id = id;
         this.title = titulo;
         this.description = descricao;
     }
 
-    public LeadDTO() {} // Essential for JSON-B!
+    public LeadDTO() {
+    } // Essential for JSON-B!
 
     public LocalDateTime getDate() {
         return date;
@@ -53,11 +57,11 @@ public class LeadDTO {
     }
 
     public int getState() {
-        return state;
+        return state.getStateId();
     }
 
-    public void setState(int state) {
-        this.state = state;
+    public void setState(int stateId) {
+        this.state = LeadState.fromId(stateId);
     }
 
     public Long getId() {
@@ -66,5 +70,23 @@ public class LeadDTO {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public boolean isSoftDelete() {
+        return softDelete;
+    }
+
+    public void setSoftDelete(boolean softDelete) {
+        this.softDelete = softDelete;
+    }
+
+    public void setState(LeadState state) {
+        this.state = state;
+    }
+
+    // Invisível no JSON, mas usado pelo Bean para gravar na BD
+    @JsonbTransient
+    public LeadState getStateEnum() {
+        return this.state;
     }
 }

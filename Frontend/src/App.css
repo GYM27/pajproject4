@@ -182,3 +182,71 @@
     border-right-color: var(--border);
   }
 }
+
+
+/* Contentor da lista */
+.lista-clientes {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 10px 0;
+}
+
+/* O Card Moderno */
+.clientes-card {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e0e6ed;
+    border-left: 5px solid #007bff; /* Barra lateral azul */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    cursor: pointer;
+    overflow: hidden;
+}
+
+/* Efeito de Hover (Levantar o card) */
+.clientes-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+    border-color: #007bff;
+}
+
+/* Header do Card */
+.card-header-modern {
+    padding: 15px 20px;
+    background: none;
+    border: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.org-name {
+    font-size: 1.1rem;
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+/* Detalhes com fundo ligeiramente cinza para contraste */
+.card-detalhes {
+    max-height: 0;
+    opacity: 0;
+    padding: 0 20px;
+    background-color: #f8f9fa;
+    transition: all 0.3s ease-in-out;
+}
+
+.clientes-card.aberto .card-detalhes {
+    max-height: 500px;
+    opacity: 1;
+    padding: 15px 20px;
+    border-top: 1px solid #eee;
+}
+
+/* Ações/Botões */
+.card-actions {
+    margin-top: 15px;
+    padding-top: 10px;
+    display: flex;
+    justify-content: flex-end;
+}

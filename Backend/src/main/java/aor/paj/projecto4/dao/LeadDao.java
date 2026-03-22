@@ -1,202 +1,92 @@
 package aor.paj.projecto4.dao;
 
-import jakarta.ejb.Stateless;
-import jakarta.inject.Inject;
 import aor.paj.projecto4.entity.LeadEntity;
-import aor.paj.projecto4.entity.UserEntity;
 import aor.paj.projecto4.utils.LeadState;
-
+import jakarta.ejb.Stateless;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.TypedQuery;
+import jakarta.ws.rs.WebApplicationException;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
 
 @Stateless
 public class LeadDao extends AbstractDao<LeadEntity> implements Serializable {
-    @Inject UserDao userDao;
 
     @Serial
     private static final long serialVersionUID = 1L;
 
+    @PersistenceContext(unitName = "project3PU")
+    private EntityManager em;
+
     public LeadDao() {
-        // We pass UserEntity.class to the AbstractDao constructor
         super(LeadEntity.class);
     }
 
-    public List<LeadEntity> getLeadsByUserId(Long id) {
+    /**
+     * 1. SUPER GET (Pesquisa Dinâmica)
+     * Centraliza todas as listagens do Admin com filtros opcionais.
+     */
+    public List<LeadEntity> findLeadsWithFilters(Integer stateId, Long userId, Boolean softDeleted) {
+        StringBuilder sb = new StringBuilder("SELECT l FROM LeadEntity l WHERE 1=1");
+
+        // Construção dinâmica da query (Append)
+        if (stateId != null) sb.append(" AND l.leadState = :state");
+        if (userId != null) sb.append(" AND l.owner.id = :userId");
+
+        if (softDeleted != null) {
+            sb.append(" AND l.softDelete = :softDeleted");
+        } else {
+            sb.append(" AND l.softDelete = false"); // Padrão: não mostrar lixo
+        }
+
+        TypedQuery<LeadEntity> query = em.createQuery(sb.toString(), LeadEntity.class);
+
+        // Atribuição segura de parâmetros (Set)
+        if (stateId != null) {
+            try {
+                query.setParameter("state", LeadState.fromId(stateId));
+            } catch (Exception e) {
+                throw new WebApplicationException("Estado de lead inválido: " + stateId, 400);
+            }
+        }
+        if (userId != null) query.setParameter("userId", userId);
+        if (softDeleted != null) query.setParameter("softDeleted", softDeleted);
+
+        return query.getResultList();
+    }
+
+    /**
+     * 2. BULK UPDATE (Ação em Massa)
+     * Altera o estado de softDelete de todas as leads de um user numa única transação.
+     */
+    public int bulkUpdateSoftDelete(Long userId, boolean newStatus) {
+        return em.createQuery("UPDATE LeadEntity l SET l.softDelete = :newStatus " +
+                        "WHERE l.owner.id = :userId AND l.softDelete = :oldStatus")
+                .setParameter("newStatus", newStatus)
+                .setParameter("oldStatus", !newStatus)
+                .setParameter("userId", userId)
+                .executeUpdate();
+    }
+
+    /**
+     * 3. NAMED QUERIES (Performance)
+     * Usa as definições que já tens na LeadEntity para casos fixos.
+     */
+    public List<LeadEntity> getLeadsByUserId(Long userId) {
+        return em.createNamedQuery("lead.findLeadsByUserId", LeadEntity.class)
+                .setParameter("id", userId)
+                .getResultList();
+    }
+
+    public LeadEntity getLeadByLeadID(Long leadId) {
         try {
-            return em.createNamedQuery("lead.findLeadsByUserId", LeadEntity.class)
-                    .setParameter("id", id)
-                    .getResultList(); // This is the correct method for lists
-        } catch (Exception e) {
-
-            return null;
-        }
-    }
-
-    //*******************new method
-    public List<LeadEntity> getLeadsByToken(String token) {
-        UserEntity userEntity=userDao.findUserByToken(token);
-
-        //check to see if the user exists
-        if(userEntity==null){
-            return null;
-        }
-
-        //check to see if the user is softDeleted
-        if(userEntity.isSoftDelete()){
-            return null;
-        }
-
-        Long id= userEntity.getId();
-        try {
-            return em.createNamedQuery("lead.findLeadsByUserId", LeadEntity.class)
-                    .setParameter("id", id)
-                    .getResultList(); // This is the correct method for lists
-        } catch (Exception e) {
-
-            return null;
-        }
-    }
-
-    public List<LeadEntity> getUserSoftDelLeads(Long userId){
-        try {
-            return em.createNamedQuery("lead.findSoftDelUserLeads", LeadEntity.class)
-                    .setParameter("id", userId)
-                    .getResultList(); // This is the correct method for lists
-        } catch (Exception e) {
-
-            return null;
-        }
-    }
-
-    public LeadEntity getLeadByUserIdLeadId(Long resourceId, Long leadId){
-        try{
-            return em.createNamedQuery("lead.findLeadsByUserIdLeadId", LeadEntity.class)
-                    .setParameter("resourceId", resourceId)
-                    .setParameter("leadId", leadId)
-                    .getSingleResult();
-
-        }catch (Exception e){
-            return null;
-        }
-    }
-
-    public LeadEntity getLeadByLeadID(Long leadId){
-        //todo verificar null do leadID, fazer o mesmo em todos os métodos deste dao
-        try{
             return em.createNamedQuery("lead.findLeadByLeadID", LeadEntity.class)
                     .setParameter("leadId", leadId)
                     .getSingleResult();
         } catch (Exception e) {
-            return null;
-        }
-
-    }
-
-    public boolean hardDelete(Long id) {
-        LeadEntity leadEntity = em.find(LeadEntity.class, id);
-        if (leadEntity != null) {
-            em.remove(leadEntity);
-            return true;
-        }
-        return false;
-    }
-
-    public boolean softDelete(Long id){
-        LeadEntity leadEntity = em.find(LeadEntity.class, id);
-        if (leadEntity != null) {
-            if(!leadEntity.isSoftDelete()){
-                leadEntity.setSoftDelete(true);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public boolean softUnDelete(Long id){
-        LeadEntity leadEntity = em.find(LeadEntity.class, id);
-        if (leadEntity != null) {
-            if(leadEntity.isSoftDelete()){
-                leadEntity.setSoftDelete(false);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public boolean softDelALlUserLeads(String token){
-        if(token!=null){
-            UserEntity userEntity=userDao.findUserByToken(token);
-            for(LeadEntity l : userEntity.getLeads()){
-                if(!l.isSoftDelete()){
-                    l.setSoftDelete(true);
-
-                }
-            }
-
-            return true;
-        }
-        return false;
-    }
-
-
-    public boolean softDelALlUserLeadsAdmin(Long id){
-        //primeiro ver se o id está null e se sim morre já
-        if(id==null) return false;
-        //ir buscar o utilizador em questão
-        UserEntity userEntity=userDao.find(id);
-        //se não o encontramos morre já
-        if(userEntity==null) return false;
-        //se o encontramos fazemos softDelete de todas as suas leads;
-        for(LeadEntity l : userEntity.getLeads()){
-            if(!l.isSoftDelete()){
-                l.setSoftDelete(true);
-            }
-        }
-        //se chegamos aqui correu tudo bem
-        return true;
-    }
-
-    public boolean softUnDelALlUserLeads(String token){
-        if(token!=null){
-            UserEntity userEntity=userDao.findUserByToken(token);
-            for(LeadEntity l : userEntity.getLeads()){
-                if(l.isSoftDelete()){
-                    l.setSoftDelete(false);
-
-                }
-            }
-            return true;
-        };
-        return false;
-    }
-
-    public boolean softUnDelALlUserLeadsAdmin(Long id){
-        //primeiro ver se o id está null e se sim morre já
-        if(id==null) return false;
-        //ir buscar o utilizador em questão
-        UserEntity userEntity=userDao.find(id);
-        //se não o encontramos morre já
-        if(userEntity==null) return false;
-        //se o encontramos fazemos softDelete de todas as suas leads;
-        for(LeadEntity l : userEntity.getLeads()){
-            if(l.isSoftDelete()){
-                l.setSoftDelete(false);
-            }
-        }
-        return true;
-    }
-
-
-    public List<LeadEntity> getLeadsByState(LeadState leadState){
-        try{
-            return em.createNamedQuery("lead.findLeadByState", LeadEntity.class)
-                    .setParameter("leadState", leadState)
-                    .getResultList();
-        } catch (Exception e) {
-            return null;
+            return null; // O Verifier no Service tratará o 404
         }
     }
-
-
 }

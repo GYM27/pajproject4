@@ -7,7 +7,13 @@ import java.io.Serializable;
 @Entity
 @Table(name = "clientes", uniqueConstraints = {
         @UniqueConstraint(columnNames = {"email", "owner_id"})
-})
+},
+        indexes = {
+                @Index(name = "idx_owner_softdelete", columnList = "owner_id, softDelete")
+        }
+)
+
+
 @NamedQueries({
         // Query para o Administrador ver TODOS os clientes ativos do sistema (de todos os users)
         @NamedQuery(
@@ -17,7 +23,7 @@ import java.io.Serializable;
         // Query para o User ver apenas os seus ativos
         @NamedQuery(
                 name = "ClientsEntity.findActiveByOwner",
-                query = "SELECT c FROM ClientsEntity c WHERE c.owner.id = :ownerId AND c.softDelete = false"
+                query = "SELECT c FROM ClientsEntity c WHERE c.owner = :owner AND c.softDelete = false"
         ),
         @NamedQuery(
                 name = "ClientsEntity.findByEmailAndOwner",
