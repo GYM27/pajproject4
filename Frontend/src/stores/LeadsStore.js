@@ -1,34 +1,40 @@
 import { create } from "zustand";
-import api from "../services/api"; // Utilizo o meu serviço central para gerir os pedidos
+import { leadService } from "../services/LeadService";
 
 export const useLeadStore = create((set, get) => ({
-  // Defino o estado inicial para as leads, controlo de carregamento e erros
   leads: [],
   loading: false,
   error: null,
+  viewingUserName: "",
 
-  // --- Funções de interação com a API ---
-
-  // Vou buscar todas as minhas leads ao servidor
-  fetchMyLeads: async () => {
+  // --- BUSCA DE DADOS ---
+  fetchMyLeads: async (userRole, filters = {}) => {
     set({ loading: true, error: null });
     try {
-      // Chamo o endpoint /leads que já injeta o meu token automaticamente
-      const data = await api("/leads");
-      set({ leads: data, loading: false });
+      const data = await leadService.getLeads(userRole, filters);
+
+      const processedLeads = data.map((lead) => ({
+        ...lead,
+        formattedDate: lead.date
+          ? new Date(lead.date.split(".")[0]).toLocaleDateString("pt-PT")
+          : "Sem data",
+      }));
+
+      set({
+        leads: processedLeads,
+        loading: false,
+        viewingUserName: processedLeads.length > 0 ? processedLeads[0].name : ""
+      });
     } catch (err) {
       set({ error: err.message, loading: false });
     }
   },
 
-  // Envio os dados de uma nova lead para o sistema
-  addLead: async (leadDto) => {
+  // --- CRIAÇÃO E EDIÇÃO ---
+  addLead: async (leadDto, userRole, targetUserId = null) => {
     set({ loading: true, error: null });
     try {
-      const newLead = await api("/leads", "POST", leadDto);
-
-      // Se o servidor criar com sucesso, adiciono logo à minha lista local
-      // Uso o spread para manter a imutabilidade do estado
+      const newLead = await leadService.createLead(leadDto, userRole, targetUserId);
       set((state) => ({
         leads: [newLead, ...state.leads],
         loading: false,
@@ -40,13 +46,10 @@ export const useLeadStore = create((set, get) => ({
     }
   },
 
-  // Atualizo os dados ou o estado de uma lead específica
-  updateLead: async (id, leadDto) => {
-    set({ loading: true, error: null });
+  updateLead: async (id, leadDto, userRole) => {
+    set({ loading: true });
     try {
-      const updatedLead = await api(`/leads/${id}`, "PUT", leadDto);
-
-      // Percorro a lista e substituo apenas a lead que acabei de editar
+      const updatedLead = await leadService.updateLead(id, leadDto, userRole);
       set((state) => ({
         leads: state.leads.map((l) => (l.id === id ? updatedLead : l)),
         loading: false,
@@ -58,13 +61,13 @@ export const useLeadStore = create((set, get) => ({
     }
   },
 
-  // Removo uma lead (o backend trata de fazer o soft delete)
-  deleteLead: async (id) => {
-    set({ error: null });
-    try {
-      await api(`/leads/${id}`, "DELETE");
+  // --- LÓGICA DA LIXEIRA (REUTILIZÁVEL) ---
 
-      // Para a interface ser rápida, filtro a lead da lista local imediatamente
+  // 1. Eliminação Temporária (Soft Delete)
+  deleteLead: async (id, userRole) => {
+    try {
+      await leadService.deleteLead(id, userRole);
+      // Remove da lista atual (ativos) para simular o comportamento da lixeira
       set((state) => ({
         leads: state.leads.filter((l) => l.id !== id),
       }));
@@ -75,8 +78,60 @@ export const useLeadStore = create((set, get) => ({
     }
   },
 
-  // Função utilitária para filtrar leads por estado (ex: para os cards do dashboard)
-  getLeadsByState: (stateId) => {
-    return get().leads.filter((l) => l.state === stateId);
+  // 2. Restaurar Lead (Exclusivo Admin)
+  restoreLead: async (id, userRole) => {
+    set({ loading: true });
+    try {
+      // Chama o endpoint de undelete/restore do seu Java
+      await leadService.restoreLead(id, userRole); 
+      set((state) => ({
+        leads: state.leads.filter((l) => l.id !== id), // Remove da lista de "apagados"
+        loading: false,
+      }));
+      return true;
+    } catch (err) {
+      set({ error: err.message, loading: false });
+      return false;
+    }
   },
+
+  // 3. Eliminação Permanente (Hard Delete - Exclusivo Admin)
+  permanentDeleteLead: async (id, userRole) => {
+    set({ loading: true });
+    try {
+      await leadService.permanentDeleteLead(id, userRole); // DELETE real na BD
+      set((state) => ({
+        leads: state.leads.filter((l) => l.id !== id),
+        loading: false,
+      }));
+      return true;
+    } catch (err) {
+      set({ error: err.message, loading: false });
+      return false;
+    }
+  },
+
+  // Adicionar à useLeadStore.js
+// 1. Restaurar Todas as Leads (Admin)
+restoreAllLeads: async (targetUserId, userRole) => {
+  try {
+    await leadService.restoreAllLeads(targetUserId, userRole); // Endpoint POST .../restoreall
+    set({ leads: [] }); // Limpa a lista da lixeira após restaurar
+    return true;
+  } catch (err) { set({ error: err.message }); return false; }
+},
+
+// 2. Esvaziar Lixeira / Apagar Tudo Permanentemente (Admin)
+emptyTrashLeads: async (targetUserId, userRole) => {
+  try {
+    await leadService.emptyTrash(targetUserId, userRole); // Endpoint DELETE .../emptytrash
+    set({ leads: [] });
+    return true;
+  } catch (err) { set({ error: err.message }); return false; }
+},
+
+  // --- AUXILIARES ---
+  setViewingUserName: (name) => set({ viewingUserName: name }),
+  
+  getLeadsByState: (stateId) => get().leads.filter((l) => l.state === stateId),
 }));

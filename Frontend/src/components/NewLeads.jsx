@@ -1,6 +1,14 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Container, Card, Form, Button, Alert, Row, Col } from "react-bootstrap";
+import {
+  Container,
+  Card,
+  Form,
+  Button,
+  Alert,
+  Row,
+  Col,
+} from "react-bootstrap";
 import { useLeadStore } from "../stores/LeadsStore"; // Importo a store global para gravar os dados
 
 const NewLead = () => {
@@ -95,7 +103,10 @@ const NewLead = () => {
                   <Button variant="primary" type="submit" disabled={loading}>
                     {loading ? "A guardar..." : "Gravar Lead"}
                   </Button>
-                  <Button variant="outline-secondary" onClick={() => navigate("/leads")}>
+                  <Button
+                    variant="outline-secondary"
+                    onClick={() => navigate("/leads")}
+                  >
                     Cancelar
                   </Button>
                 </div>

@@ -53,16 +53,29 @@ const Dashboard = () => {
   }, [navigate]);
 
   useEffect(() => {
-    fetchDashboardData();
+    let isMounted = true; // Evita atualizar o estado se o user sair da página rápido
+
+    const loadData = async () => {
+      if (isMounted) {
+        await fetchDashboardData();
+      }
+    };
+
+    loadData();
+
+    return () => {
+      isMounted = false; // Função de limpeza
+    };
   }, [fetchDashboardData]);
 
+  
   return (
     <div className="container-fluid">
       <div className="barra-welcome mb-4 p-3 bg-light rounded shadow-sm">
         <h3 className="m-0">Bem-vindo ao seu sistema CRM</h3>
       </div>
 
-      <div className="row g-3 mb-4">
+      <div className="row g-3 mb-4 justify-content-center">
         {[
           {
             label: "Novos Leads",
@@ -108,8 +121,8 @@ const Dashboard = () => {
         ))}
       </div>
 
-      <div className="row g-3">
-        <div className="col-md-6">
+      <div className="row g-6 mb-4 justify-content-center">
+        <div className="col-md-5">
           <div
             className="card text-center p-4 border-0 shadow-sm"
             style={{ backgroundColor: "#e0ecff", cursor: "pointer" }}
@@ -119,7 +132,7 @@ const Dashboard = () => {
             <div className="display-5 fw-bold text-primary">{stats.leads}</div>
           </div>
         </div>
-        <div className="col-md-6">
+        <div className="col-md-5">
           <div
             className="card text-center p-4 border-0 shadow-sm"
             style={{ backgroundColor: "#e0ecff", cursor: "pointer" }}

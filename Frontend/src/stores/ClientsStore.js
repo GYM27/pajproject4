@@ -10,12 +10,15 @@ export const useClientStore = create((set) => ({
   // --- AÇÕES ---
 
   // 1. Carregar Clientes (GET /clients)
-  fetchMyClients: async () => {
-    // Otimização: Só carrega se a lista estiver vazia para evitar pedidos duplos do StrictMode
+  fetchMyClients: async (userRole, filters = {}) => {
     set({ loading: true, error: null });
     try {
-      // O api.js já conhece a BASE_URL e injeta o token
-      const data = await api("/clients");
+      // Se for Admin e houver filtro de lixeira, a rota muda no Java
+      const endpoint = (userRole === "ADMIN" && filters.showDeleted) 
+        ? "/clients/admin/deleted" 
+        : "/clients";
+        
+      const data = await api(endpoint);
       set({ clients: data, loading: false });
     } catch (err) {
       set({ error: err.message, loading: false });
@@ -27,8 +30,6 @@ export const useClientStore = create((set) => ({
     set({ loading: true, error: null });
     try {
       const newClient = await api("/clients", "POST", clientDto);
-
-      // Atualização Imutável: Adiciona ao array local para refletir no UI sem novo fetch
       set((state) => ({
         clients: [...state.clients, newClient],
         loading: false,
@@ -45,8 +46,6 @@ export const useClientStore = create((set) => ({
     set({ loading: true, error: null });
     try {
       const updatedClient = await api(`/clients/${id}`, "PUT", clientDto);
-
-      // Substitui apenas o objeto editado
       set((state) => ({
         clients: state.clients.map((c) => (c.id === id ? updatedClient : c)),
         loading: false,
@@ -58,14 +57,13 @@ export const useClientStore = create((set) => ({
     }
   },
 
-  // 4. Eliminar Cliente (DELETE /clients/{id})
+  // 4. Mover para Lixeira (Soft Delete - POST /clients/{id}/delete)
   deleteClient: async (id) => {
     set({ error: null });
     try {
-      // Se o servidor devolver 204 No Content, o api.js retorna true
-      await api(`/clients/${id}`, "DELETE");
+      // Seguindo a lógica do Projeto 3: Mover para lixeira em vez de apagar real
+      await api(`/clients/${id}/delete`, "POST");
 
-      // Remoção Local: Retira da lista imediatamente
       set((state) => ({
         clients: state.clients.filter((c) => c.id !== id),
       }));
@@ -75,4 +73,38 @@ export const useClientStore = create((set) => ({
       return false;
     }
   },
+
+  // --- NOVAS AÇÕES DE LIXEIRA (REUTILIZÁVEIS) ---
+
+  // 5. Restaurar Cliente (Exclusivo Admin - POST /clients/{id}/restore)
+  restoreClient: async (id) => {
+    set({ loading: true });
+    try {
+      await api(`/clients/${id}/restore`, "POST"); // Endpoint do seu Java
+      set((state) => ({
+        clients: state.clients.filter((c) => c.id !== id), // Remove da lista de apagados
+        loading: false,
+      }));
+      return true;
+    } catch (err) {
+      set({ error: err.message, loading: false });
+      return false;
+    }
+  },
+
+  // 6. Eliminar Permanente (Exclusivo Admin - DELETE /clients/{id}/permanent)
+  permanentDeleteClient: async (id) => {
+    set({ loading: true });
+    try {
+      await api(`/clients/${id}/permanent`, "DELETE"); // Hard Delete real
+      set((state) => ({
+        clients: state.clients.filter((c) => c.id !== id),
+        loading: false,
+      }));
+      return true;
+    } catch (err) {
+      set({ error: err.message, loading: false });
+      return false;
+    }
+  }
 }));

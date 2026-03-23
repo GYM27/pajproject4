@@ -1,43 +1,42 @@
-import React from 'react';
-import {useNavigate} from 'react-router-dom';
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import { logoutUser } from "../services/LoginService"; // Importamos do serviço centralizado
 
-const Header = () => {
-    const navigate = useNavigate();
-    const userName = localStorage.getItem("userName") || "Utilizador";
+const Header = ({ onToggleMenu }) => {
+  const navigate = useNavigate();
+  const userName = localStorage.getItem("userName") || "Utilizador";
 
-    const handleLogout = async () => {
-        const token = localStorage.getItem("token");
-        // Invalidar o token no backend
-        if (token) {
-            try {
-                await fetch("http://localhost:8080/LuisF-proj4/rest/users/logout", {
-                    method: "POST",
-                    headers: { token: token },
-                });
-            } catch (err) {
-                console.error("Erro ao fazer logout no servidor:", err);
-            }
-        }
-        localStorage.removeItem("token");
-        localStorage.removeItem("userName");
-        localStorage.removeItem("userRole");
-        navigate("/login");
-    };
+  const handleLogout = async () => {
+    await logoutUser();
+    navigate("/login");
+  };
 
-    return (
-        <header className="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow">
-            <a className="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6" href="#">Bridge.
-            </a>
-            <div className="navbar-nav w-100 d-flex flex-row justify-content-end align-items-center px-3">
-                <span className="text-white me-3">Olá , {userName}</span>
-                <div className="nav-item text-nowrap">
-                    <button className="btn btn-outline-light btn-sm" onClick={handleLogout}>
-                        Sair
-                    </button>
-                </div>
-            </div>
-        </header>
-    );
+  return (
+    <header className="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-2 shadow">
+      <div className="d-flex align-items-center">
+        {/* Botão sempre visível para o utilizador poder esconder a barra */}
+        <button
+          className="btn btn-secondary d-flex align-items-center justify-content-center me-2"
+          onClick={onToggleMenu}
+          style={{ width: "40px", height: "40px" }}
+        >
+          <i className="bi bi-list"></i>
+        </button>
+        <a className="navbar-brand fs-6" href="#">
+          Bridge.
+        </a>
+      </div>
+
+      <div className="navbar-nav px-3 d-flex flex-row align-items-center">
+        <span className="text-white me-3 d-none d-sm-inline">
+          Olá, {userName}
+        </span>
+        <button className="btn btn-outline-light btn-sm" onClick={handleLogout}>
+          Sair
+        </button>
+      </div>
+    </header>
+  );
 };
 
 export default Header;

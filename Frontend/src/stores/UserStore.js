@@ -9,15 +9,15 @@ export const useUserStore = create(
   persist(
     (set) => ({
       // 1. ESTADO: Guardamos o nome próprio (ex: "Luís") e não o login (ex: "luis123")
-      firstName: "", 
+      firstName: "",
+    
 
       // 2. AÇÃO: Função para atualizar o nome no mural global
       setFirstName: (name) => set({ firstName: name }), 
-
       setUserRole: (role) => set({userRole: role}),
 
       // 3. AÇÃO EXTRA: Limpar os dados (útil para o Logout)
-      clearUser: () => set({ firstName: "", userRole: "" }),
+      clearUser: () => set({ firstName: "", lastName: "", userRole: "" }),
     }),
     {
       name: "user-storage", 

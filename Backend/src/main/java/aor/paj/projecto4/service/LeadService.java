@@ -77,7 +77,7 @@ public class LeadService {
      * O verifier garante: Token válido, User ativo, Existência da lead e Posse/Admin.
      */
     @GET
-    @Path("/leads/{leadId}") // Retiramos o /me para padronizar com /clients
+    @Path("/{leadId}") // Retiramos o /me para padronizar com /clients
     @Produces(MediaType.APPLICATION_JSON)
     public Response getLeadById(@HeaderParam("token") String token,
                                 @PathParam("leadId") Long leadId) {
@@ -95,7 +95,7 @@ public class LeadService {
     }
 
     @PUT
-    @Path("/leads/{leadId}")
+    @Path("/{leadId}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response updateLead(@HeaderParam("token") String token,
@@ -116,7 +116,7 @@ public class LeadService {
      * U7 Soft Delete de Lead usando o verbo DELETE.
      */
     @DELETE
-    @Path("/leads/{leadId}") // URL limpa e profissional
+    @Path("/{leadId}") // URL limpa e profissional
     @Produces(MediaType.APPLICATION_JSON)
     public Response deleteLead(@HeaderParam("token") String token,
                                @PathParam("leadId") Long leadId) {
@@ -138,7 +138,7 @@ public class LeadService {
      * Lista TUDO. Pode filtrar por user, por estado ou ver o que está na lixeira usando @QueryParam.
      */
     @GET
-    @Path("/admin/leads")
+    @Path("/admin")
     @Produces(MediaType.APPLICATION_JSON)
     public Response adminGetLeads(
             @HeaderParam("token") String token,
@@ -159,7 +159,7 @@ public class LeadService {
      * inclusive para fazer "Undelete"Edita qualquer lead do sistema, inclusive para fazer "Undelete"
      */
     @PUT
-    @Path("/admin/leads/{leadId}")
+    @Path("/admin/{leadId}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response superAdminUpdate(
@@ -181,7 +181,7 @@ public class LeadService {
      * Admin: Cria uma nova lead e atribui-a a um utilizador específico.
      */
     @POST
-    @Path("/admin/{userId}/leads")
+    @Path("/admin/{userId}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response adminAddLeadToUser(@HeaderParam("token") String token,
@@ -204,7 +204,7 @@ public class LeadService {
      * Apenas acessível por Administradores.
      */
     @DELETE
-    @Path("/admin/leads/{leadId}")
+    @Path("/admin/{leadId}")
     public Response hardDelete(@HeaderParam("token") String token,
                                @PathParam("leadId") Long leadId) {
 
@@ -221,7 +221,7 @@ public class LeadService {
      * Útil para quando um utilizador sai da empresa ou muda de departamento.
      */
     @POST
-    @Path("/admin/{userId}/leads/softdeleteall")
+    @Path("/admin/{userId}/softdeleteall")
     @Produces(MediaType.APPLICATION_JSON)
     public Response softDeleteAllFromUser(@HeaderParam("token") String token,
                                           @PathParam("userId") Long userId) {
@@ -241,7 +241,7 @@ public class LeadService {
      * Útil para reverter um erro ou quando um utilizador volta a ficar ativo.
      */
     @POST
-    @Path("/admin/{userId}/leads/softundeleteall")
+    @Path("/admin/{userId}/softundeleteall")
     @Produces(MediaType.APPLICATION_JSON)
     public Response undeleteAllFromUser(@HeaderParam("token") String token,
                                         @PathParam("userId") Long userId) {

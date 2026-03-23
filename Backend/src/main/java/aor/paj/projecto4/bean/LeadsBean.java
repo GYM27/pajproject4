@@ -39,6 +39,11 @@ public class LeadsBean implements Serializable {
         dto.setState(entity.getLeadState().getStateId());
         dto.setDate(entity.getData());
         dto.setSoftDelete(entity.isSoftDelete());
+        // Aceder ao firstName através do Owner
+        if (entity.getOwner() != null) {
+            dto.setName(entity.getOwner().getFirstName());
+            dto.setName(entity.getOwner().getLastName());
+        }
         return dto;
     }
 

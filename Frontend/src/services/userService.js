@@ -5,12 +5,21 @@ import api from './api';
  */
 export const userService = {
     /**
-     * Obtém os dados do perfil do utilizador autenticado através do endpoint /me.
-     * O wrapper 'api' injeta automaticamente o token do localStorage no Header.
+     * Obtém os dados do perfil do utilizador autenticado.
      */
     getMe: async () => {
-        // Chamamos a API centralizada indicando apenas o caminho e o método.
-        // O tratamento de erros (401, 403, 500) já é feito pelo api.js.
         return await api("/users/me", "GET");
+    },
+
+    /**
+     * Obtém a lista de todos os utilizadores (apenas para ADMIN).
+     * Mapeia para o endpoint @GET /users no Java.
+     */
+    getAllUsers: async () => {
+        // O wrapper 'api' já deve tratar a injeção do token no Header
+        const response = await api("/users", "GET");
+        
+        // Proteção: Garante que devolvemos sempre um array para o .map no componente
+        return Array.isArray(response) ? response : [];
     }
 };

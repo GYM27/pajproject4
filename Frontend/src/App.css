@@ -250,3 +250,56 @@
     display: flex;
     justify-content: flex-end;
 }
+
+:root {
+  --sidebar-width-open: 260px;
+  --sidebar-width-closed: 35px;
+  --transition-speed: 0.3s;
+}
+
+.sidebar-nav {
+  height: 100vh;
+  background-color: #ffffff;
+  transition: width var(--transition-speed) ease;
+  overflow-x: hidden;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  /* No desktop, um z-index normal serve */
+  z-index: 100; 
+}
+
+@media (max-width: 767px) {
+  .sidebar-nav {
+    /* No mobile, ela deve flutuar para não quebrar os cards */
+    position: fixed;
+    left: 0;
+    top: 0;
+    /* IMPORTANTE: z-index alto, mas o botão de abrir deve ser MAIOR ou IGUAL */
+    z-index: 1040; 
+    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+    height: 100vh;
+  }
+
+  /* Se estiver FECHADA no mobile, largura 75px para ver só ícones */
+  .sidebar-nav:not(.show) {
+    width: var(--sidebar-width-closed) !important;
+  }
+
+  /* Se estiver ABERTA no mobile, expande */
+  .sidebar-nav.show {
+    width: var(--sidebar-width-open) !important;
+  }
+}
+
+/* Garante que o botão de toggle (hambúrguer) esteja sempre visível */
+.btn-toggle-sidebar {
+  position: relative;
+  z-index: 1100 !important; /* Maior que a sidebar */
+}
+/* IMPORTANTE: Adicione isto para o seu Header/Botão aparecer */
+.header-container, .navbar, .btn-toggle-sidebar {
+  position: relative;
+  /* O botão de fechar TEM de ser maior que o 1040 da sidebar */
+  z-index: 1050 !important; 
+}

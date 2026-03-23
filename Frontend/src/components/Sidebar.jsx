@@ -1,55 +1,57 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
+import { OverlayTrigger, Tooltip } from 'react-bootstrap';
+import '../App.css';
 
-const Sidebar = () => {
+const Sidebar = ({ isOpen }) => {
+  const menuItems = [
+    { to: "/dashboard", icon: "bi-speedometer2", label: "Dashboard" },
+    { to: "/leads", icon: "bi-person-plus", label: "Leads" },
+    { to: "/clients", icon: "bi-people", label: "Clientes" },
+    { to: "/users", icon: "bi-gear", label: "Utilizadores" },
+  ];
+
   return (
     <nav
-      id="sidebarMenu"
-      className="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse"
-      style={{ minWidth: "200px", borderRight: "1px solid #dee2e6" }}
+      className={`sidebar-nav border-end d-flex flex-column ${isOpen ? "show" : ""}`}
+      style={{
+        width: isOpen ? "var(--sidebar-width-open)" : "var(--sidebar-width-closed)",
+      }}
     >
-      <div className="position-sticky pt-3">
+      <div className="pt-5"> {/* Aumentado o padding superior para não bater no botão do topo */}
         <ul className="nav flex-column">
-          <li className="nav-item">
-            <NavLink
-              className={({ isActive }) =>
-                isActive ? "nav-link active fw-bold" : "nav-link"
-              }
-              to="/dashboard"
-            >
-              <i className="bi bi-speedometer2 me-2"></i> Dashboard
-            </NavLink>
-          </li>
-          <li className="nav-item">
-            <NavLink
-              className={({ isActive }) =>
-                isActive ? "nav-link active fw-bold" : "nav-link"
-              }
-              to="/leads"
-            >
-              <i className="bi bi-person-plus me-2"></i> Leads
-            </NavLink>
-          </li>
-          <li className="nav-item">
-            <NavLink
-              className={({ isActive }) =>
-                isActive ? "nav-link active fw-bold" : "nav-link"
-              }
-              to="/clients"
-            >
-              <i className="bi bi-people me-2"></i> Clientes
-            </NavLink>
-          </li>
-          <li className="nav-item">
-            <NavLink
-              className={({ isActive }) =>
-                isActive ? "nav-link active fw-bold" : "nav-link"
-              }
-              to="/users"
-            >
-              <i className="bi bi-gear me-2"></i> Utilizadores
-            </NavLink>
-          </li>
+          {menuItems.map((item) => (
+            <li className="nav-item w-100" key={item.to}>
+              <OverlayTrigger
+                placement="right"
+                overlay={!isOpen ? <Tooltip id={`t-${item.to}`}>{item.label}</Tooltip> : <div className="d-none" />}
+                trigger={!isOpen ? ['hover', 'focus'] : []}
+              >
+                <NavLink
+                  to={item.to}
+                  className={({ isActive }) =>
+                    `nav-link py-3 d-flex align-items-center ${isActive ? "text-primary fw-bold bg-light" : "text-dark"}`
+                  }
+                  style={{
+                    
+                    paddingLeft: isOpen ? "20px" : "0px",
+                  }}
+                >
+                  <div className="d-flex justify-content-center align-items-center" style={{ minWidth: "35px", flexShrink: 0 }}>
+                    <i className={`bi ${item.icon} fs-4`}></i>
+                  </div>
+                  
+                  <span className="nav-label" style={{ 
+                    opacity: isOpen ? 1 : 0, 
+                    visibility: isOpen ? "visible" : "hidden",
+                    marginLeft: "10px" 
+                  }}>
+                    {item.label}
+                  </span>
+                </NavLink>
+              </OverlayTrigger>
+            </li>
+          ))}
         </ul>
       </div>
     </nav>

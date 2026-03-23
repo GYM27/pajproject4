@@ -42,6 +42,7 @@ function Login() {
       if (data && data.token) {
         localStorage.setItem("token", data.token);
         localStorage.setItem("userName", data.firstName); // Guardamos o nome para mostrar no dashboard
+        localStorage.setItem("lastName", data.lastName); // Guardamos o ID para futuras chamadas à API
         localStorage.setItem("userRole", data.userRole); // Guardamos o papel do utilizador
 
         // LOG DE DEBUG: Abre a consola (F12) e vê se isto aparece
@@ -54,7 +55,6 @@ function Login() {
       // REGRAS DE NAVEGAÇÃO:
       // Usamos o navigate para o DASHBOARD, não para o login novamente
       navigate("/dashboard", { replace: true });
-
     } catch (err) {
       setError(err.message);
     }
