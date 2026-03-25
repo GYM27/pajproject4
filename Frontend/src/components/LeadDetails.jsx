@@ -1,44 +1,63 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Container, Card, Button, Badge, Row, Col } from "react-bootstrap";
+import { Container, Card, Button, Row, Col } from "react-bootstrap";
 import { useLeadStore } from "../stores/LeadsStore";
 import { useUserStore } from "../stores/UserStore";
-// Importação do novo componente de Modal
-import ConfirmModal from "../components/ConfirmModal"; 
+
+// Importa os componentes do novo sistema de Modais
+import DynamicModal from "../components/DynamicModal";
+import EditLeadForm from "../components/EditLeadForm";
 
 const LeadDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { leads, deleteLead } = useLeadStore();
+  const { leads, deleteLead, fetchMyLeads } = useLeadStore();
   const userRole = useUserStore((state) => state.userRole);
 
-  // Estado para controlar a visibilidade do Modal
-  const [showModal, setShowModal] = useState(false);
+  // Estado unificado para os Modais (tal como no Leads.jsx)
+  const [modalConfig, setModalConfig] = useState({
+    show: false,
+    title: "",
+    type: null,
+    data: null,
+  });
 
-  // Procura a lead específica nos dados que já temos
   const lead = leads.find((l) => String(l.id) === String(id));
 
-  if (!lead) {
+  const closeModal = () => setModalConfig({ ...modalConfig, show: false });
+
+  const openEdit = () => {
+    setModalConfig({
+      show: true,
+      title: "Editar Lead",
+      type: "EDIT",
+      data: lead,
+    });
+  };
+
+  const openDelete = () => {
+    setModalConfig({
+      show: true,
+      title: "Confirmar Eliminação",
+      type: "DELETE",
+      data: lead,
+    });
+  };
+
+  const handleConfirmDelete = async () => {
+    const success = await deleteLead(id, userRole);
+    if (success) {
+      closeModal();
+      navigate("/leads");
+    }
+  };
+
+  if (!lead)
     return (
       <Container className="mt-4">
         <p>Lead não encontrada.</p>
       </Container>
     );
-  }
-
-  // Função disparada ao clicar no botão "Apagar" do card
-  const handleDeleteClick = () => {
-    setShowModal(true); // Abre o modal em vez do confirm do windows
-  };
-
-  // Função executada apenas quando o utilizador confirma no Modal
-  const handleConfirmDelete = async () => {
-    const success = await deleteLead(id, userRole);
-    if (success) {
-      setShowModal(false);
-      navigate("/leads");
-    }
-  };
 
   return (
     <Container className="mt-4">
@@ -52,49 +71,65 @@ const LeadDetails = () => {
 
       <Card className="shadow-sm border-0">
         <Card.Body className="p-4">
-          <div className="d-flex justify-content-between align-items-start mb-4">
-            <div>
-              <h2 className="fw-bold mb-1 justify-content-center">{lead.title}</h2>
-            </div>
-          </div>
-
+          <h2 className="fw-bold mb-4">{lead.title}</h2>
           <Row className="mb-4">
             <Col md={12}>
               <h5>Descrição</h5>
               <p className="bg-light p-3 rounded">
-                {lead.description || "Sem descrição disponível."}
+                {lead.description || "Sem descrição."}
               </p>
-              <p className="text-muted fw-bold">Criada em: {lead.formattedDate}</p>
+              <p className="text-muted small">
+                Criada em: {lead.formattedDate}
+              </p>
             </Col>
           </Row>
 
-          <hr />
-
           <div className="d-flex gap-2 justify-content-end">
-            <Button
-              variant="outline-primary"
-              onClick={() => navigate(`/leads/edit/${id}`)}
-            >
-              <i className="bi bi-pencil"></i> 
+            <Button variant="outline-primary" onClick={openEdit}>
+              <i className="bi bi-pencil"></i> Editar
             </Button>
-
-            {/* Botão alterado para chamar a função que abre o modal */}
-            <Button variant="danger" onClick={handleDeleteClick}>
-              <i className="bi bi-trash"></i> 
+            <Button variant="danger" onClick={openDelete}>
+              <i className="bi bi-trash"></i> Apagar
             </Button>
           </div>
         </Card.Body>
       </Card>
 
-      {/* Componente Modal adicionado ao final do Container */}
-      <ConfirmModal
-        show={showModal}
-        onHide={() => setShowModal(false)}
-        onConfirm={handleConfirmDelete}
-        title="Confirmar Eliminação"
-        message={`Tem a certeza que deseja apagar a lead "${lead.title}"? Esta ação poderá ser revertida pelo administrador.`}
-        variant="danger"
-      />
+      {/* MODAL DINÂMICO REUTILIZADO */}
+      <DynamicModal
+        show={modalConfig.show}
+        onHide={closeModal}
+        title={modalConfig.title}
+      >
+        {modalConfig.type === "EDIT" && (
+          <EditLeadForm
+            leadData={modalConfig.data}
+            onSuccess={() => {
+              // Atualiza a store para refletir as mudanças no ecrã de detalhes
+              fetchMyLeads(userRole);
+              closeModal();
+            }}
+            onCancel={closeModal}
+          />
+        )}
+
+        {modalConfig.type === "DELETE" && (
+          <div>
+            <p>
+              Tem a certeza que deseja apagar a lead{" "}
+              <strong>{lead.title}</strong>?
+            </p>
+            <div className="d-flex justify-content-end gap-2 mt-3">
+              <Button variant="secondary" onClick={closeModal}>
+                Cancelar
+              </Button>
+              <Button variant="danger" onClick={handleConfirmDelete}>
+                Confirmar
+              </Button>
+            </div>
+          </div>
+        )}
+      </DynamicModal>
     </Container>
   );
 };

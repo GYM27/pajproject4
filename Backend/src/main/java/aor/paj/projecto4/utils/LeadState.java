@@ -1,4 +1,5 @@
 package aor.paj.projecto4.utils;
+import jakarta.json.bind.annotation.JsonbCreator;
 
 public enum LeadState {
     NOVO(1),
@@ -19,6 +20,7 @@ public enum LeadState {
     }
 
     // Método utilitário para converter ID do Banco/API de volta para Enum
+    @JsonbCreator
     public static LeadState fromId(int id) {
         for (LeadState state : values()) {
             if (state.leadStateId == id) return state;

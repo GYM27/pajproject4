@@ -38,7 +38,7 @@ public class LeadsBean implements Serializable {
         dto.setDescription(entity.getDescricao());
         dto.setState(entity.getLeadState().getStateId());
         dto.setDate(entity.getData());
-        dto.setSoftDelete(entity.isSoftDelete());
+        dto.setSoftDeleted(entity.isSoftDeleted());
         // Aceder ao firstName através do Owner
         if (entity.getOwner() != null) {
             dto.setName(entity.getOwner().getFirstName());
@@ -53,7 +53,7 @@ public class LeadsBean implements Serializable {
         entity.setDescricao(dto.getDescription());
         entity.setLeadState(dto.getStateEnum());
         entity.setOwner(owner);
-        entity.setSoftDelete(dto.isSoftDelete());
+        entity.setSoftDeleted(dto.isSoftDeleted());
         return entity;
     }
 
@@ -81,11 +81,18 @@ public class LeadsBean implements Serializable {
     /**
      * Listar leads do utilizador autenticado
      */
-    public List<LeadDTO> getLeadsByToken(String token) {
+    public List<LeadDTO> getLeadsByToken(String token, Boolean softDeleted) {
         UserEntity user = tokenBean.getUserEntityByToken(token);
         List<LeadEntity> entities = leadDao.getLeadsByUserId(user.getId());
 
         return entities.stream()
+        // -------- Filtragem dinâmica ---
+                .filter(e -> {
+                    // Se showDeleted for true, mostra as apagadas (softDelete == true)
+                    // Se for false (ou null), mostra as ativas (softDelete == false)
+                    boolean filterValue = (softDeleted != null && softDeleted);
+                    return e.isSoftDeleted() == filterValue;
+                })
                 .map(this::entityToDTO)
                 .collect(Collectors.toList());
     }
@@ -119,7 +126,7 @@ public class LeadsBean implements Serializable {
     public void softDeleteLead(Long leadId) {
         LeadEntity lead = leadDao.getLeadByLeadID(leadId);
         if (lead != null) {
-            lead.setSoftDelete(true);
+            lead.setSoftDeleted(true);
             leadDao.merge(lead);
         }
     }
@@ -153,7 +160,7 @@ public class LeadsBean implements Serializable {
             lead.setLeadState(dto.getStateEnum());
         }
 
-        lead.setSoftDelete(dto.isSoftDelete());
+        lead.setSoftDeleted(dto.isSoftDeleted());
 
         leadDao.merge(lead);
         return entityToDTO(lead);

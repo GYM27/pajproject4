@@ -36,9 +36,9 @@ public class LeadDao extends AbstractDao<LeadEntity> implements Serializable {
         if (userId != null) sb.append(" AND l.owner.id = :userId");
 
         if (softDeleted != null) {
-            sb.append(" AND l.softDelete = :softDeleted");
+            sb.append(" AND l.softDeleted = :softDeleted");
         } else {
-            sb.append(" AND l.softDelete = false"); // Padrão: não mostrar lixo
+            sb.append(" AND l.softDeleted = false"); // Padrão: não mostrar lixo
         }
 
         TypedQuery<LeadEntity> query = em.createQuery(sb.toString(), LeadEntity.class);
@@ -62,8 +62,8 @@ public class LeadDao extends AbstractDao<LeadEntity> implements Serializable {
      * Altera o estado de softDelete de todas as leads de um user numa única transação.
      */
     public int bulkUpdateSoftDelete(Long userId, boolean newStatus) {
-        return em.createQuery("UPDATE LeadEntity l SET l.softDelete = :newStatus " +
-                        "WHERE l.owner.id = :userId AND l.softDelete = :oldStatus")
+        return em.createQuery("UPDATE LeadEntity l SET l.softDeleted = :newStatus " +
+                        "WHERE l.owner.id = :userId AND l.softDeleted = :oldStatus")
                 .setParameter("newStatus", newStatus)
                 .setParameter("oldStatus", !newStatus)
                 .setParameter("userId", userId)

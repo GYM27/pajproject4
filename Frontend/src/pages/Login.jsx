@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useUserStore } from "../stores/UserStore"; // Importa a tua Store do Zustand
-import { loginUser } from "../services/LoginService"; // Importa o Serviço de API
+import { loginUser } from "../services/loginService.js"; // Importa o Serviço de API
 import {
   Container,
   Card,
@@ -11,14 +11,12 @@ import {
   Row,
   Col,
 } from "react-bootstrap";
-import { Link } from "react-router-dom";
+
 
 function Login() {
-  // Estado local para capturar os dados dos inputs
   const [inputs, setInputs] = useState({ username: "", password: "" });
-
-  // Estado para gerir mensagens de erro da API
   const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Hooks de navegação e estado global
   const setUserRole = useUserStore((state) => state.setUserRole);
@@ -34,20 +32,20 @@ function Login() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError(null);
+    setIsLoading(true);
 
     try {
       const data = await loginUser(inputs);
 
       // Se o serviço devolveu o token, guardamos no "baú" do browser
-      if (data && data.token) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("userName", data.firstName); // Guardamos o nome para mostrar no dashboard
-        localStorage.setItem("lastName", data.lastName); // Guardamos o ID para futuras chamadas à API
-        localStorage.setItem("userRole", data.userRole); // Guardamos o papel do utilizador
-
-        // LOG DE DEBUG: Abre a consola (F12) e vê se isto aparece
-        console.log("Token guardado com sucesso:", data.token);
+      if (!data || !data.token) {
+        throw new Error("Erro: O servidor não devolveu o token de segurança");
       }
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("userName", data.firstName); 
+        localStorage.setItem("lastName", data.lastName); 
+        localStorage.setItem("userRole", data.userRole); 
+
       //Atualizamos o mural global (Zustand) com a nova função
       setFirstName(data.firstName);
       setUserRole(data.userRole);
@@ -56,7 +54,11 @@ function Login() {
       // Usamos o navigate para o DASHBOARD, não para o login novamente
       navigate("/dashboard", { replace: true });
     } catch (err) {
-      setError(err.message);
+      // Captura de erro genérica ou fornecida pelo serviço
+      setError(err.message || "Ocorreu um erro ao iniciar sessão. Tente novamente.");
+    } finally {
+      // Executa sempre, quer haja sucesso ou erro, para libertar o botão
+      setIsLoading(false);
     }
   };
 
@@ -79,7 +81,7 @@ function Login() {
 
               <Form onSubmit={handleSubmit}>
                 <Form.Group className="mb-3" controlId="formUsername">
-                  <Form.Label>Utilizador</Form.Label>
+                  <Form.Label className="fw-bold text-secondary small">Utilizador</Form.Label>
                   <Form.Control
                     type="text"
                     name="username"
@@ -87,12 +89,13 @@ function Login() {
                     value={inputs.username}
                     onChange={handleChange}
                     required
+                    disabled={isLoading}
                     className="py-2"
                   />
                 </Form.Group>
 
                 <Form.Group className="mb-4" controlId="formPassword">
-                  <Form.Label>Palavra-passe</Form.Label>
+                  <Form.Label className="fw-bold text-secondary small">Palavra-passe</Form.Label>
                   <Form.Control
                     type="password"
                     name="password"
@@ -100,6 +103,7 @@ function Login() {
                     value={inputs.password}
                     onChange={handleChange}
                     required
+                    disable={isLoading}
                     className="py-2"
                   />
                 </Form.Group>
@@ -107,10 +111,12 @@ function Login() {
                 <Button
                   variant="primary"
                   type="submit"
+                  disabled={isLoading}
                   className="w-100 py-2 fw-bold"
                 >
                   Login
                 </Button>
+                
                 <div className="text-center mt-4">
                   <span className="text-muted">Ainda não tem conta? </span>
                   <Link to="/register" className="text-decoration-none fw-bold">

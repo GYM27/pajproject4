@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Container,
   Card,
@@ -9,27 +9,34 @@ import {
   Row,
   Col,
 } from "react-bootstrap";
-import { useLeadStore } from "../stores/LeadsStore"; // Importo a store global para gravar os dados
+// --- ALTERAÇÃO: Importação das stores necessárias para obter addLead e o papel do utilizador ---
+import { useLeadStore } from "../stores/LeadsStore"; 
+import { useUserStore } from "../stores/UserStore";
 
 const NewLead = () => {
-  // Utilizo o nome 'leadData' para que o estado seja genérico.
-  // Isto permite-me, no futuro, reutilizar esta lógica ou este objeto para a funcionalidade de edição.
   const [leadData, setLeadData] = useState({
     title: "",
     description: "",
-    state: 1, // Valor inicial (Novo) vindo do meu Enum no Java
+    state: 1, 
   });
 
   const [error, setError] = useState(null);
-  const { addLead, loading } = useLeadStore(); // Extraio as funções necessárias da minha store
+  
+  // --- ALTERAÇÃO: Extração correta das funções da store ---
+  const { addLead, loading } = useLeadStore(); 
+  // --- ALTERAÇÃO: Obtemos o userRole para passar à função addLead conforme exige a store ---
+  const userRole = useUserStore((state) => state.userRole);
+  
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // Função para capturar as mudanças nos inputs e atualizar o estado de forma imutável
+  // Se vier um targetId do ecrã anterior, guardamos. Se não (ex: não havia filtro), fica null.
+  const targetUserId = location.state?.targetId || null;
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setLeadData((prev) => ({
       ...prev,
-      // Se for o campo state, converto para inteiro para o Java não dar erro de tipo
       [name]: name === "state" ? parseInt(value) : value,
     }));
   };
@@ -38,11 +45,11 @@ const NewLead = () => {
     e.preventDefault();
     setError(null);
 
-    // Envio o objeto leadData para a store, que por sua vez chama o meu serviço api.js
-    const success = await addLead(leadData);
+    // --- ALTERAÇÃO: Chamada à função addLead passando o userRole exigido na nova store ---
+    // A store agora espera: addLead(leadDto, userRole, targetUserId = null)
+    const success = await addLead(leadData, userRole,targetUserId);
 
     if (success) {
-      // Se a criação no servidor correr bem, volto para a lista de leads
       navigate("/leads");
     } else {
       setError("Erro ao guardar os dados da lead. Tente novamente.");

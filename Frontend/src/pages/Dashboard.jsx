@@ -21,16 +21,16 @@ const Dashboard = () => {
     try {
       // 2. Chamadas paralelas à API usando o teu wrapper centralizado
       // Nota: No teu Backend, o endpoint para leads do próprio user é /leads/me
-      const leads = await api("/leads");
+      const leads = await api("/leads/admin");
       const clientes = await api("/clients");
 
       // 3. Atualização do estado (Corrigido de 'serStats' para 'setStats')
       setStats({
-        novos: leads.filter((lead) => lead.state === 1).length,
-        analise: leads.filter((lead) => lead.state === 2).length,
-        propostas: leads.filter((lead) => lead.state === 3).length,
-        ganhos: leads.filter((lead) => lead.state === 4).length,
-        perdidos: leads.filter((lead) => lead.state === 5).length,
+        novos: leads.filter((lead) => Number(lead.state) === 1).length,
+        analise: leads.filter((lead) => Number(lead.state) === 2).length,
+        propostas: leads.filter((lead) => Number(lead.state) === 3).length,
+        ganhos: leads.filter((lead) => Number(lead.state) === 4).length,
+        perdidos: leads.filter((lead) => Number(lead.state) === 5).length,
         leads: leads.length,
         clientes: clientes.length,
       });

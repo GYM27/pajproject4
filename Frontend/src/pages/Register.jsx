@@ -9,7 +9,7 @@ import {
   Row,
   Col,
 } from "react-bootstrap";
-import { registerUser } from "../services/RegisterService"; 
+import { registerUser } from "../services/registerService.js";
 
 function Register() {
   // 1. Inicializar o estado com todos os campos necessários

@@ -12,10 +12,10 @@ import java.time.LocalDateTime;
 @Table(name = "leads")
 
 //alterado para só mostrar as leads que não estão soft deleted
-@NamedQuery(name = "lead.findLeadsByUserId", query = "SELECT l FROM LeadEntity l WHERE l.owner.id = :id and l.softDelete=false" )
+@NamedQuery(name = "lead.findLeadsByUserId", query = "SELECT l FROM LeadEntity l WHERE l.owner.id = :id and l.softDeleted=false" )
 @NamedQuery(name = "lead.findLeadsByUserIdLeadId", query = "SELECT l FROM LeadEntity l WHERE l.owner.id = :resourceId and l.id=:leadId")
 @NamedQuery(name= "lead.findLeadByLeadID", query = "select l from LeadEntity l where l.id=:leadId")
-@NamedQuery(name="lead.findSoftDelUserLeads", query="select l from LeadEntity l where l.softDelete=true AND l.owner.id = :id")
+@NamedQuery(name="lead.findSoftDelUserLeads", query="select l from LeadEntity l where l.softDeleted=true AND l.owner.id = :id")
 @NamedQuery(name="lead.findLeadByState", query = "select l from LeadEntity l where l.leadState=:leadState")
 
 public class LeadEntity implements Serializable {
@@ -42,8 +42,8 @@ public class LeadEntity implements Serializable {
     @Column(name="data", nullable = false, updatable = false, unique = false)
     private LocalDateTime data;
 
-    @Column(name = "softDelete", nullable = false)
-    private boolean softDelete = false;
+    @Column(name = "softDeleted", nullable = false)
+    private boolean softDeleted = false;
 
     @ManyToOne
     @JoinColumn(name = "owner_id")
@@ -89,12 +89,12 @@ public class LeadEntity implements Serializable {
         this.owner = owner;
     }
 
-    public boolean isSoftDelete() {
-        return softDelete;
+    public boolean isSoftDeleted() {
+        return softDeleted;
     }
 
-    public void setSoftDelete(boolean softDelete) {
-        this.softDelete = softDelete;
+    public void setSoftDeleted(boolean softDeleted) {
+        this.softDeleted = softDeleted;
     }
 
     public Long getId() {

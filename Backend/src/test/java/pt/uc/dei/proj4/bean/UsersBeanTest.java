@@ -74,13 +74,13 @@ public class UsersBeanTest {
         // 2. Setup Leads (Necessário para o erro de compilação desaparecer)
         leadEntity = spy(new LeadEntity());
         leadEntity.setTitulo("Lead Antiga");
-        leadEntity.setSoftDelete(false);
+        leadEntity.setSoftDeleted(false);
         leadEntity.setLeadState(LeadState.NOVO);
         doReturn(10L).when(leadEntity).getId();
 
         leadDTO = new LeadDTO();
         leadDTO.setTitle("Lead Editada");
-        leadDTO.setSoftDelete(true);
+        leadDTO.setSoftDeleted(true);
 
         // 3. Setup Login
         loginDTO1 = new LoginDTO(u.getUsername(), u.getPassword());
@@ -140,7 +140,7 @@ public class UsersBeanTest {
 
         // 3. Verificação
         // Importante: Para isto ser TRUE, o teu LeadsBean.entityToDTO deve mapear o campo softDelete!
-        assertTrue(result.isSoftDelete(), "A lead devia estar em soft delete após o super edit");
+        assertTrue(result.isSoftDeleted(), "A lead devia estar em soft delete após o super edit");
         verify(leadDao).merge(leadEntity);
     }
 }

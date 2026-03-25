@@ -22,7 +22,7 @@ public class LeadDTO {
 
     private String name;
     private LocalDateTime date;
-    private boolean softDelete;
+    private boolean softDeleted;
 
     public LeadDTO(Long id, String titulo, String descricao) {
         this.id = id;
@@ -82,17 +82,15 @@ public class LeadDTO {
         this.id = id;
     }
 
-    public boolean isSoftDelete() {
-        return softDelete;
+    public boolean isSoftDeleted() {
+        return softDeleted;
     }
 
-    public void setSoftDelete(boolean softDelete) {
-        this.softDelete = softDelete;
+    public void setSoftDeleted(boolean softDelete) {
+        this.softDeleted = softDeleted;
     }
 
-    public void setState(LeadState state) {
-        this.state = state;
-    }
+
 
     // Invisível no JSON, mas usado pelo Bean para gravar na BD
     @JsonbTransient

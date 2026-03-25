@@ -56,19 +56,28 @@ public class LeadService {
      * Utilizado tanto pela página de gestão de leads como pelo Dashboard para contagens.
      */
     @GET
-    @Path("/") 
+    @Path("/")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getLeads(@HeaderParam("token") String token) {
+    public Response getLeads(
+            @HeaderParam("token") String token,
+            @QueryParam("softDeleted") Boolean softDeleted,
+            @QueryParam("state") Integer state // Se quiseres filtrar logo por estado no backend
+    ) {
 
-        // 1. Segurança: Valida token e se o utilizador está ativo.
-        // Se falhar, lança 401 ou 403 e o método para aqui.
+        // 1. Segurança
         verifier.verifyUser(token);
 
-        // 2. Lógica: O Bean procura as entidades e converte-as para DTOs.
-        // Usamos List (interface) em vez de ArrayList (implementação).
-        List<LeadDTO> leads = leadsBean.getLeadsByToken(token);
+        // 2. Tratar os valores por defeito (se o React não enviar softDeleted, assumimos false)
+        boolean isTrash = (softDeleted != null) ? softDeleted : false;
 
-        // 3. Resposta: Retornamos a lista (mesmo que esteja vazia, é um 200 OK com []).
+        // 3. Lógica: Passamos a flag "isTrash" para o Bean decidir qual query usar
+        // Tens de atualizar o teu LeadsBean para aceitar este segundo argumento
+        List<LeadDTO> leads = leadsBean.getLeadsByToken(token, isTrash);
+
+        // Se também quiseres filtrar por estado no backend (opcional):
+        // if (state != null) { ... filtrar a lista ou enviar o state para a query ... }
+
+        // 4. Resposta
         return Response.ok(leads).build();
     }
 

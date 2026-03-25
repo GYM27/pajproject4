@@ -303,3 +303,24 @@
   /* O botão de fechar TEM de ser maior que o 1040 da sidebar */
   z-index: 1050 !important; 
 }
+
+/* Kanban  */
+.kanban-column {
+  background-color: #f8f9fa;
+  width: 300px;
+  flex-shrink: 0; /* Impede que as colunas encolham */
+}
+
+.kanban-card {
+  transition: transform 0.2s;
+  cursor: pointer;
+}
+
+.kanban-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
+}
+
+.very-small {
+  font-size: 0.75rem;
+}

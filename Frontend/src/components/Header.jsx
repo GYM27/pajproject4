@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { logoutUser } from "../services/LoginService"; // Importamos do serviço centralizado
+import { logoutUser } from "../services/loginService.js"; // Importamos do serviço centralizado
 
 const Header = ({ onToggleMenu }) => {
   const navigate = useNavigate();

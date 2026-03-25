@@ -1,4 +1,4 @@
-package aor.paj.projecto4.rest;
+package aor.paj.projecto4.service;
 
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerResponseContext;
@@ -18,7 +18,7 @@ public class CorsFilter implements ContainerResponseFilter {
         responseContext.getHeaders().add("Access-Control-Allow-Origin", "http://localhost:5173");
 
         // Permite os métodos que usas
-        responseContext.getHeaders().add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, HEAD");
+        responseContext.getHeaders().add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, HEAD, PATCH");
 
         // IMPORTANTE: Permite o header 'token' que criaste no api.js
         responseContext.getHeaders().add("Access-Control-Allow-Headers", "origin, content-type, accept, authorization, token");

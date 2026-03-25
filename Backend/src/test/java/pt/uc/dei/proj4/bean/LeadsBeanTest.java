@@ -98,7 +98,7 @@ public class LeadsBeanTest {
 
         leadsBean.softDeleteLead(10L);
 
-        assertTrue(leadEntity.isSoftDelete());
+        assertTrue(leadEntity.isSoftDeleted());
         verify(leadDao, times(1)).merge(leadEntity);
     }
 
@@ -162,11 +162,11 @@ public class LeadsBeanTest {
     @DisplayName("Admin: Super Edit deve alterar estado de soft delete")
     void testAdminSuperEdit() {
         when(leadDao.getLeadByLeadID(10L)).thenReturn(leadEntity);
-        leadDTO.setSoftDelete(true);
+        leadDTO.setSoftDeleted(true);
 
         LeadDTO result = leadsBean.adminSuperEdit(10L, leadDTO);
 
-        assertTrue(result.isSoftDelete());
+        assertTrue(result.isSoftDeleted());
         verify(leadDao).merge(leadEntity);
     }
 }

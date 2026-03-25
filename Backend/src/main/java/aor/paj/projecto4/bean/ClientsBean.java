@@ -1,20 +1,18 @@
 package aor.paj.projecto4.bean;
 
-import aor.paj.projecto4.dao.UserDao;
-import aor.paj.projecto4.utils.UserRoles;
-import jakarta.ejb.Stateless;
-import jakarta.inject.Inject;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import jakarta.ws.rs.WebApplicationException;
+import java.util.List;
+import java.util.stream.Collectors;
 
-import jakarta.ws.rs.core.Response;
 import aor.paj.projecto4.dao.ClientsDao;
+import aor.paj.projecto4.dao.UserDao;
 import aor.paj.projecto4.dto.ClientsDTO;
 import aor.paj.projecto4.entity.ClientsEntity;
 import aor.paj.projecto4.entity.UserEntity;
-import java.util.List;
-import java.util.stream.Collectors;
+import aor.paj.projecto4.utils.UserRoles;
+import jakarta.ejb.Stateless;
+import jakarta.inject.Inject;
+import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.Response;
 
 
 @Stateless
