@@ -44,6 +44,8 @@ public class LeadsBean implements Serializable {
             dto.setName(entity.getOwner().getFirstName());
             dto.setName(entity.getOwner().getLastName());
         }
+        dto.setFirstName(entity.getOwner().getFirstName());
+        dto.setLastName(entity.getOwner().getLastName());
         return dto;
     }
 

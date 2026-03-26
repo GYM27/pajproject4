@@ -115,11 +115,25 @@ export const useLeadStore = create((set, get) => ({
     if (!userId) return false;
     set({ loading: true });
     try {
-      if (actionType === "RESTORE_ALL") {
-        await leadService.restoreAllFromUser(userId);
-      } else if (actionType === "SOFT_DELETE_ALL") {
-        await leadService.softDeleteAllFromUser(userId);
-      }
+      switch (actionType) {
+            case "RESTORE_ALL":
+                await leadService.restoreAllFromUser(userId);
+                break;
+
+            case "SOFT_DELETE_ALL":
+                await leadService.softDeleteAllFromUser(userId);
+                break;
+
+            case "EMPTY_TRASH":
+                
+                await leadService.emptyTrashByUserId(userId); 
+                break;
+
+            default:
+                console.warn("Ação não reconhecida:", actionType);
+                set({ loading: false });
+                return false;
+        }
       // Pedimos à store para ir buscar as leads novamente à API
       // Isto garante 100% que o ecrã vai mostrar exatamente o que está na base de dados
       await get().fetchMyLeads(currentUserRole, currentFilters);

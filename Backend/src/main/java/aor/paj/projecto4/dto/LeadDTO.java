@@ -20,6 +20,8 @@ public class LeadDTO {
     @NotBlank(message = "A Descrição da lead não pode estar vazio")
     private String description;
 
+    private String firstName;
+    private String lastName;
     private String name;
     private LocalDateTime date;
     private boolean softDeleted;
@@ -33,6 +35,26 @@ public class LeadDTO {
 
     public LeadDTO() {
     } // Essential for JSON-B!
+
+    public void setState(LeadState state) {
+        this.state = state;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
 
     public String getName() {
         return name;

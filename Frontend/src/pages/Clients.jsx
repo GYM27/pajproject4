@@ -4,6 +4,7 @@ import { useUserStore } from "../stores/UserStore";
 import { useEffect, useState } from "react";
 import { Container, Button, Spinner, Row, Col, Form } from "react-bootstrap";
 import EditClientForm from "../components/EditClientForm";
+import { userService } from "../services/userService";
 import "../App.css";
 
 // IMPORTA O MODAL
@@ -34,6 +35,15 @@ const Clients = () => {
     type: null,
     data: null,
   });
+
+  const [users, setUsers] = useState([]); // Novo estado para a lista de users
+
+  useEffect(() => {
+    // Carrega os utilizadores apenas se for ADMIN
+    if (isAdmin) {
+      userService.getAllUsers().then(setUsers).catch(console.error);
+    }
+  }, [isAdmin]);
 
   const closeModal = () => setModalConfig({ ...modalConfig, show: false });
 
@@ -71,14 +81,12 @@ const Clients = () => {
   };
 
   useEffect(() => {
-    if (isTrashMode && isAdmin) {
-      if (filters.userId) {
-        fetchClients(userRole, { ...filters, showTrash: true });
-      }
-    } else {
-      fetchClients(userRole, { ...filters, showTrash: false });
-    }
-  }, [userRole, filters.userId, isTrashMode, fetchClients, isAdmin]);
+  //a Store decide o endpoint com base no showTrash e userId
+  fetchClients(userRole, { 
+    userId: filters.userId || null, 
+    showTrash: isTrashMode 
+  });
+}, [userRole, filters.userId, isTrashMode, fetchClients]);
 
   const toggleCard = (id) => {
     setOpenCardId(openCardId === id ? null : id);
@@ -155,14 +163,19 @@ const Clients = () => {
             <Col md={6}>
               <Form.Group>
                 <Form.Label className="small fw-bold text-secondary">
-                  ID do Utilizador Responsável
+                  Responsável pelas Leads
                 </Form.Label>
-                <Form.Control
-                  type="number"
-                  placeholder="Obrigatório para ver Lixeira"
+                <Form.Select
                   value={filters.userId}
                   onChange={(e) => setFilters({ userId: e.target.value })}
-                />
+                >
+                  <option value="">Selecione um utilizador...</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.firstName} {u.lastName}
+                    </option>
+                  ))}
+                </Form.Select>
               </Form.Group>
             </Col>
             {!isTrashMode && filters.userId && clients.length > 0 && (
@@ -220,7 +233,7 @@ const Clients = () => {
 
                     <p className="mb-1">
                       <i className="bi bi-envelope text-muted me-2"></i>
-                      <strong>Email:</strong> {client.email}
+                      <strong></strong> {client.email}
                     </p>
                     <p className="mb-1">
                       <i className="bi bi-telephone me-2"></i>

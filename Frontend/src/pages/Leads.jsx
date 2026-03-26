@@ -237,7 +237,15 @@ const Leads = () => {
                         {style.label}
                       </Badge>
                     </div>
-                    <span className="text-muted">{lead.firstName}</span>
+                    <div
+                      className="d-flex align-items-center text-muted mb-2"
+                      style={{ fontSize: "0.85rem" }}
+                    >
+                      <i className="bi bi-person-circle me-1 text-primary"></i>
+                      <span className="fw-bold">
+                        {lead.firstName} {lead.lastName}
+                      </span>
+                    </div>
                     <div className="mt-auto pt-3 border-top d-flex justify-content-between align-items-center text-secondary small">
                       <span>
                         <i className="bi bi-calendar3 me-1"></i>

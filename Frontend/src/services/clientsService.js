@@ -55,5 +55,9 @@ export const clientsService = {
     // Mapeia para @DELETE /clients/user/{userId}/trash
     emptyTrashByUserId: async (userId) => {
         return await api(`/clients/user/${userId}/trash`, "DELETE");
+    },
+
+    getAllTrash: async () => {
+    return await api("/clients/trash", "GET");
     }
 };

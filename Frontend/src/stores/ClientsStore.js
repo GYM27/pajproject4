@@ -1,22 +1,24 @@
 import { create } from "zustand";
-import { clientsService } from "../services/clientsService.js";
+import { clientsService } from "../services/clientsService";
 
 export const useClientStore = create((set, get) => ({
   clients: [],
   loading: false,
   error: null,
 
-  // --- BUSCA ---
+  // --- BUSCA DINÂMICA ajustado para o novo findClientsWithFilters ---
   fetchClients: async (userRole, filters = {}) => {
     set({ loading: true, error: null });
     try {
       let data;
-      // Se estivermos a ver a lixeira como Admin
-      if (userRole === "ADMIN" && filters.showTrash && filters.userId) {
-        data = await clientsService.getTrashByUserId(filters.userId);
-      } else {
-        data = await clientsService.getClients(userRole, filters);
-      }
+      // Agora passamos showTrash (boolean) e userId diretamente.
+      // O Bean no Java decidirá se filtra por utilizador ou mostra tudo.
+      const apiFilters = {
+        userId: filters.userId || null,
+        showTrash: !!filters.showTrash // Garante que é booleano
+      };
+
+      data = await clientsService.getClients(userRole, apiFilters);
       set({ clients: data, loading: false });
     } catch (err) {
       set({ error: err.message, loading: false });
@@ -31,47 +33,46 @@ export const useClientStore = create((set, get) => ({
       } else {
         await clientsService.softDeleteClient(id);
       }
+      // UI Update instantâneo
       set(state => ({ clients: state.clients.filter(c => c.id !== id) }));
       return true;
-    } catch (err) { set({ error: err.message }); return false; }
+    } catch (err) { 
+      set({ error: err.message }); 
+      return false; 
+    }
   },
-
-  // --- REINTEGRAÇÃO: Função para editar Clientes (Update) ---
-updateClient: async (id, clientDto) => {
-  set({ loading: true, error: null });
-  try {
-    const updatedClient = await clientsService.updateClient(id, clientDto);
-    set((state) => ({
-      clients: state.clients.map((c) => (c.id === id ? updatedClient : c)),
-      loading: false,
-    }));
-    return true;
-  } catch (err) {
-    set({ error: err.message, loading: false });
-    return false;
-  }
-},
 
   restoreClient: async (id) => {
     try {
-      await clientsService.restoreClient(id); // Usa PATCH internamente
+      await clientsService.restoreClient(id);
       set(state => ({ clients: state.clients.filter(c => c.id !== id) }));
       return true;
-    } catch (err) { set({ error: err.message }); return false; }
+    } catch (err) { 
+      set({ error: err.message }); 
+      return false; 
+    }
   },
 
-  // --- AÇÕES EM MASSA (ADMIN) ---
-  // ALTERAÇÃO: Recebe também o userRole e os filtros para poder atualizar o ecrã a seguir
+  // --- AÇÕES EM MASSA (Sincronizadas com o Bulk Update do Java) ---
   handleBulkAction: async (userId, actionType, currentUserRole, currentFilters) => {
+    if (!userId) return false;
     set({ loading: true });
     try {
       switch (actionType) {
-        case 'RESTORE_ALL': await clientsService.restoreAllFromUser(userId); break;
-        case 'DEACTIVATE_ALL': await clientsService.softDeleteAllFromUser(userId); break;
-        case 'EMPTY_TRASH': await clientsService.emptyTrashByUserId(userId); break;
+        case 'RESTORE_ALL': 
+          await clientsService.restoreAllFromUser(userId); 
+          break;
+        case 'DEACTIVATE_ALL': 
+          await clientsService.softDeleteAllFromUser(userId); 
+          break;
+        case 'EMPTY_TRASH': 
+          await clientsService.emptyTrashByUserId(userId); 
+          break;
         default: break;
       }
-      // Pede à API os dados atualizados em vez de limpar a lista
+      
+      
+      // trará a lista vazia (ou atualizada) com 100% de certeza.
       await get().fetchClients(currentUserRole, currentFilters);
       return true;
     } catch (err) {
