@@ -10,23 +10,23 @@ import {
   Col,
 } from "react-bootstrap";
 // --- ALTERAÇÃO: Importação das stores necessárias para obter addLead e o papel do utilizador ---
-import { useLeadStore } from "../stores/LeadsStore"; 
-import { useUserStore } from "../stores/UserStore";
+import { useLeadStore } from "../../stores/LeadsStore";
+import { useUserStore } from "../../stores/UserStore";
 
 const NewLead = () => {
   const [leadData, setLeadData] = useState({
     title: "",
     description: "",
-    state: 1, 
+    state: 1,
   });
 
   const [error, setError] = useState(null);
-  
+
   // --- ALTERAÇÃO: Extração correta das funções da store ---
-  const { addLead, loading } = useLeadStore(); 
+  const { addLead, loading } = useLeadStore();
   // --- ALTERAÇÃO: Obtemos o userRole para passar à função addLead conforme exige a store ---
   const userRole = useUserStore((state) => state.userRole);
-  
+
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -45,9 +45,9 @@ const NewLead = () => {
     e.preventDefault();
     setError(null);
 
-    // --- ALTERAÇÃO: Chamada à função addLead passando o userRole exigido na nova store ---
-    // A store agora espera: addLead(leadDto, userRole, targetUserId = null)
-    const success = await addLead(leadData, userRole,targetUserId);
+    
+    // A store espera: addLead(leadDto, userRole, targetUserId = null)
+    const success = await addLead(leadData, userRole, targetUserId);
 
     if (success) {
       navigate("/leads");

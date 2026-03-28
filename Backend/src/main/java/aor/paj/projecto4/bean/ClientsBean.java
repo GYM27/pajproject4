@@ -36,6 +36,7 @@ public class ClientsBean {
         dto.setEmail(entity.getEmail());
         dto.setPhone(entity.getPhone());
         dto.setOrganization(entity.getOrganization());
+        dto.setSoftDeleted(entity.isSoftDelete());
         return dto;
     }
 
@@ -46,7 +47,8 @@ public class ClientsBean {
         entity.setPhone(dto.getPhone());
         entity.setOrganization(dto.getOrganization());
         entity.setOwner(owner);
-        entity.setSoftDelete(false);
+        // Use o valor do DTO se ele estiver disponível, caso contrário, use false
+        entity.setSoftDelete(dto.isSoftDeleted());
         return entity;
     }
 
@@ -137,14 +139,14 @@ public class ClientsBean {
 
     // --- AÇÕES EM MASSA (Otimizadas via Bulk Update no DAO) ---
 
-    public void softDeleteAllClientsByUser(Long userId) {
+    public int softDeleteAllClientsByUser(Long userId) {
         if (userDao.find(userId) == null) throw new WebApplicationException("Utilizador não encontrado", 404);
-        clientsDao.bulkUpdateSoftDelete(userId, true); // Move tudo para lixeira
+        return clientsDao.bulkUpdateSoftDelete(userId, true); // Move tudo para lixeira
     }
 
-    public void unSoftDeleteAllClientsByUser(Long userId) {
+    public int unSoftDeleteAllClientsByUser(Long userId) {
         if (userDao.find(userId) == null) throw new WebApplicationException("Utilizador não encontrado", 404);
-        clientsDao.bulkUpdateSoftDelete(userId, false); // Restaura tudo
+        return clientsDao.bulkUpdateSoftDelete(userId, false); // Restaura tudo
     }
 
     public boolean emptyTrash(Long userId) {

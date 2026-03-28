@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Form, Button, Spinner, Alert } from "react-bootstrap";
-import { useClientStore } from "../stores/ClientsStore";
+import { useClientStore } from "../../stores/ClientsStore";
 
 const EditClientForm = ({ clientData, onSuccess, onCancel }) => {
   const { updateClient, loading } = useClientStore();

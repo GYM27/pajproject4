@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Form, Button, Spinner } from "react-bootstrap";
-import { useLeadStore } from "../stores/LeadsStore";
-import { useUserStore } from "../stores/UserStore";
+import { useLeadStore } from "../../stores/LeadsStore";
+import { useUserStore } from "../../stores/UserStore";
 
 // Recebe os dados da lead e as funções para fechar o modal
 const EditLeadForm = ({ leadData: initialData, onSuccess, onCancel }) => {
@@ -27,8 +27,6 @@ const EditLeadForm = ({ leadData: initialData, onSuccess, onCancel }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // DEBUG: Verifica o que está a ser enviado
-    console.log("Dados enviados para a API:", leadData);
     // Usa o ID que veio da prop initialData
     const success = await updateLead(initialData.id, leadData, userRole);
 

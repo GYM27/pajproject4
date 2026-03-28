@@ -19,48 +19,56 @@ function Login() {
   const [isLoading, setIsLoading] = useState(false);
 
   // Hooks de navegação e estado global
-  const setUserRole = useUserStore((state) => state.setUserRole);
+ 
   const navigate = useNavigate();
-  const setFirstName = useUserStore((state) => state.setFirstName);
+  const { setFirstName, setUserRole, setPhotoUrl } = useUserStore();
 
   // Função para lidar com as alterações nos campos do formulário
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-    setInputs((values) => ({ ...values, [name]: value }));
-  };
+const handleChange = (event) => {
+  const { name, value } = event.target;
+  
+  // Atualiza o estado mantendo os valores anteriores e alterando apenas o campo atual
+  setInputs((values) => ({ 
+    ...values, 
+    [name]: value 
+  }));
+};
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setError(null);
-    setIsLoading(true);
+  
+const handleSubmit = async (event) => {
+  event.preventDefault();
+  setError(null);
+  setIsLoading(true);
 
-    try {
-      const data = await loginUser(inputs);
+  try {
+    
+    const credentials = {
+      username: inputs.username.trim(),
+      password: inputs.password
+    };
 
-      // Se o serviço devolveu o token, guardamos no "baú" do browser
-      if (!data || !data.token) {
-        throw new Error("Erro: O servidor não devolveu o token de segurança");
-      }
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("userName", data.firstName); 
-        localStorage.setItem("lastName", data.lastName); 
-        localStorage.setItem("userRole", data.userRole); 
+    // 2. Chamada ao serviço com os dados limpos
+    const data = await loginUser(credentials);
 
-      //Atualizamos o mural global (Zustand) com a nova função
-      setFirstName(data.firstName);
-      setUserRole(data.userRole);
-
-      // REGRAS DE NAVEGAÇÃO:
-      // Usamos o navigate para o DASHBOARD, não para o login novamente
-      navigate("/dashboard", { replace: true });
-    } catch (err) {
-      // Captura de erro genérica ou fornecida pelo serviço
-      setError(err.message || "Ocorreu um erro ao iniciar sessão. Tente novamente.");
-    } finally {
-      // Executa sempre, quer haja sucesso ou erro, para libertar o botão
-      setIsLoading(false);
+    if (!data || !data.token) {
+      throw new Error("Erro: O servidor não devolveu o token de segurança");
     }
-  };
+
+    // 3. Atualização do estado global (Zustand)
+    setFirstName(data.firstName);
+    setUserRole(data.userRole);
+    setPhotoUrl(data.photoUrl); 
+
+    // 4. Navegação para a área protegida
+    navigate("/dashboard", { replace: true });
+
+  } catch (err) {
+    // Segurança: Mensagem genérica para não dar pistas a invasores
+    setError("Utilizador ou password inválidos.");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <Container className="d-flex justify-content-center align-items-center vh-100">
@@ -103,7 +111,7 @@ function Login() {
                     value={inputs.password}
                     onChange={handleChange}
                     required
-                    disable={isLoading}
+                    disabled={isLoading}
                     className="py-2"
                   />
                 </Form.Group>

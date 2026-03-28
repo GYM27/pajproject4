@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Container, Card, Button, Row, Col } from "react-bootstrap";
-import { useLeadStore } from "../stores/LeadsStore";
-import { useUserStore } from "../stores/UserStore";
+import { useLeadStore } from "../../stores/LeadsStore";
+import { useUserStore } from "../../stores/UserStore";
 
 // Importa os componentes do novo sistema de Modais
-import DynamicModal from "../components/DynamicModal";
-import EditLeadForm from "../components/EditLeadForm";
+import DynamicModal from "../DynamicModal";
+import EditLeadForm from "./EditLeadForm";
 
 const LeadDetails = () => {
   const { id } = useParams();

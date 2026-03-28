@@ -1,14 +1,24 @@
 package aor.paj.projecto4.service;
 
-import jakarta.inject.Inject;
-import jakarta.validation.Valid;
-import jakarta.ws.rs.*;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
+import java.util.List;
+
 import aor.paj.projecto4.bean.ClientsBean;
 import aor.paj.projecto4.dto.ClientsDTO;
-
-import java.util.List;
+import jakarta.inject.Inject;
+import jakarta.validation.Valid;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.HeaderParam;
+import jakarta.ws.rs.PATCH;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 
 @Path("/clients")
 public class ClientsService {
@@ -65,22 +75,32 @@ public class ClientsService {
     }
 
     @PATCH
-    @Path("/{id}/restore")
-    public Response restoreClient(@HeaderParam("token") String token, @PathParam("id") Long id) {
-        verifier.verifyOwnershipOrAdmin(token, id);
-        clientsBean.restoreClient(id);
-        return Response.ok("Cliente restaurado com sucesso.").build();
-    }
+@Path("/{id}/restore")
+@Produces(MediaType.APPLICATION_JSON) // 1. Garante que o cabeçalho HTTP diz que é JSON
+public Response restoreClient(@HeaderParam("token") String token, @PathParam("id") Long id) {
+    verifier.verifyOwnershipOrAdmin(token, id);
+    
+    // 2. Guarda o DTO retornado pelo Bean
+    ClientsDTO restoredClient = clientsBean.restoreClient(id);
+    
+    // 3. Retorna o objeto em vez da String
+    return Response.ok(restoredClient).build();
+}
 
     // --- 2. OPERAÇÕES EXCLUSIVAS DE ADMINISTRADOR ---
 
-    @DELETE
-    @Path("/{id}/permanent") // Diferenciação clara para o Hard Delete
-    public Response permanentDelete(@HeaderParam("token") String token, @PathParam("id") Long id) {
-        verifier.verifyAdmin(token);
-        clientsBean.permanentDeleteClient(id);
-        return Response.noContent().build();
-    }
+   @DELETE
+@Path("/{id}/permanent") // Diferenciação clara para o Hard Delete
+public Response permanentDelete(@HeaderParam("token") String token, @PathParam("id") Long id) {
+    // 1. Verifica se é Admin
+    verifier.verifyAdmin(token);
+    
+    // 2. Chama o método correto de apagar definitivamente no Bean
+    clientsBean.permanentDeleteClient(id);
+    
+    // 3. Retorna 204 No Content (o padrão para DELETEs bem-sucedidos)
+    return Response.noContent().build();
+}
 
     @PATCH
     @Path("/user/{userId}/status/deactivate-all")

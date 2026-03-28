@@ -1,11 +1,12 @@
 package aor.paj.projecto4.dao;
 
+import java.util.List;
+
+import aor.paj.projecto4.entity.ClientsEntity;
 import aor.paj.projecto4.entity.UserEntity;
 import jakarta.ejb.Stateless;
-import aor.paj.projecto4.entity.ClientsEntity;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.TypedQuery;
-import java.util.List;
 
 @Stateless
 public class ClientsDao extends AbstractDao<ClientsEntity> {
@@ -43,16 +44,13 @@ public class ClientsDao extends AbstractDao<ClientsEntity> {
     /**
      * ATUALIZAÇÃO EM MASSA (Substitui softDeleteAllFromUser e restoreAllFromUser)
      */
-    public void bulkUpdateSoftDelete(Long userId, boolean newStatus) {
-        em.createQuery("UPDATE ClientsEntity c SET c.softDelete = :newStatus WHERE c.owner.id = :userId")
+    public int bulkUpdateSoftDelete(Long userId, boolean newStatus) {
+      return  em.createQuery("UPDATE ClientsEntity c SET c.softDelete = :newStatus WHERE c.owner.id = :userId")
                 .setParameter("newStatus", newStatus)
                 .setParameter("userId", userId)
                 .executeUpdate();
 
-        // Sincronização e limpeza de Cache (Crucial para refletir no React imediatamente)
-        em.flush();
-        em.clear();
-        em.getEntityManagerFactory().getCache().evict(ClientsEntity.class);
+
     }
 
     public void hardDelete(Long id) {

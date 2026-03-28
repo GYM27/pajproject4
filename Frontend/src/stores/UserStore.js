@@ -8,20 +8,14 @@ import { persist, createJSONStorage } from "zustand/middleware";
 export const useUserStore = create(
   persist(
     (set) => ({
-      // 1. ESTADO: Guardamos o nome próprio (ex: "Luís") e não o login (ex: "luis123")
       firstName: "",
-    
-
-      // 2. AÇÃO: Função para atualizar o nome no mural global
-      setFirstName: (name) => set({ firstName: name }), 
-      setUserRole: (role) => set({userRole: role}),
-
-      // 3. AÇÃO EXTRA: Limpar os dados (útil para o Logout)
-      clearUser: () => set({ firstName: "", lastName: "", userRole: "" }),
+      userRole: "",
+      photoUrl: "", // Adicionado campo de foto
+      setFirstName: (name) => set({ firstName: name }),
+      setUserRole: (role) => set({ userRole: role }),
+      setPhotoUrl: (url) => set({ photoUrl: url }), // Adicionada ação
+      clearUser: () => set({ firstName: "", userRole: "", photoUrl: "" }),
     }),
-    {
-      name: "user-storage", 
-      storage: createJSONStorage(() => sessionStorage),
-    },
-  ),
+    { name: "user-storage", storage: createJSONStorage(() => sessionStorage) }
+  )
 );

@@ -3,15 +3,15 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import MainLayout from "./pages/MainLayout";
 import Dashboard from "./pages/Dashboard";
-/* import Leads from "./pages/Leads"; */
 import Clients from "./pages/Clients";
-import NewLeads from "./components/NewLeads";
+import NewLeads from "./components/Leads/NewLeads";
 import "bootstrap/dist/css/bootstrap.min.css";
-
-
-import LeadDetails from "./components/LeadDetails";
-import EditLeadForm from "./components/EditLeadForm";
+import LeadDetails from "./components/Leads/LeadDetails";
+import EditLeadForm from "./components/Leads/EditLeadForm";
 import LeadsKanban from "./pages/LeadsKanban";
+import Users from "./pages/Users";
+import Profile from "./pages/Profile";
+import NewClient from "./components/Clients/NewClient";
 
 function App() {
   const isDevelopment = import.meta.env.DEV;
@@ -27,13 +27,14 @@ function App() {
         <Route element={<MainLayout />}>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          {/* <Route path="/leads" element={<Leads />} /> */}
           <Route path="/leads" element={<LeadsKanban />} />
           <Route path="/leads/new" element={<NewLeads />} />
           <Route path="/leads/edit/:id" element={<EditLeadForm />} />
           <Route path="/leads/:id" element={<LeadDetails />} />
-
+          <Route path="/users" element={<Users />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/clients" element={<Clients />} />
+          <Route path="/clients/new" element={<NewClient />} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -25,7 +25,8 @@ public class ClientsDTO implements Serializable {
     @Pattern(regexp = "\\d{9,15}", message = "O telemóvel deve ter entre 9 e 15 dígitos")
     private String phone;
 
-    private String organization; // Opcional segundo o enunciado
+    private String organization;
+    private boolean softDeleted;// Opcional segundo o enunciado
 
     // Construtor vazio obrigatório para a desserialização JSON
     public ClientsDTO() {
@@ -70,5 +71,13 @@ public class ClientsDTO implements Serializable {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public boolean isSoftDeleted() {
+        return softDeleted;
+    }
+
+    public void setSoftDeleted(boolean softDeleted) {
+        this.softDeleted = softDeleted;
     }
 }

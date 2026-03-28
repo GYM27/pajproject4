@@ -1,9 +1,14 @@
 import React, { useState } from "react";
 import { Form, Button, Alert, Spinner } from "react-bootstrap";
-import { useLeadStore } from "../stores/LeadsStore"; 
-import { useUserStore } from "../stores/UserStore";
+import { useLeadStore } from "../../stores/LeadsStore";
+import { useUserStore } from "../../stores/UserStore";
 
-const NewLeadForm = ({ targetUserId, onSuccess, onCancel, initialState = 1 }) => {
+const NewLeadForm = ({
+  targetUserId,
+  onSuccess,
+  onCancel,
+  initialState = 1,
+}) => {
   const [leadData, setLeadData] = useState({
     title: "",
     description: "",
@@ -11,7 +16,7 @@ const NewLeadForm = ({ targetUserId, onSuccess, onCancel, initialState = 1 }) =>
   });
 
   const [error, setError] = useState(null);
-  const { addLead, loading } = useLeadStore(); 
+  const { addLead, loading } = useLeadStore();
   const userRole = useUserStore((state) => state.userRole);
 
   const handleChange = (e) => {
