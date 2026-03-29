@@ -109,3 +109,23 @@
 .very-small {
   font-size: 0.75rem;
 }
+
+.sidebar-nav.is-open {
+  width: var(--sidebar-width-open) !important;
+  min-width: var(--sidebar-width-open) !important;
+  max-width: var(--sidebar-width-open) !important;
+}
+
+.sidebar-nav.is-closed {
+  width: var(--sidebar-width-closed) !important;
+  min-width: var(--sidebar-width-closed) !important;
+  max-width: var(--sidebar-width-closed) !important;
+}
+
+.nav-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  width: 100%;
+}

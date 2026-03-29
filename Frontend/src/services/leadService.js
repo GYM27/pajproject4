@@ -80,9 +80,9 @@ restoreLead: async (leadId) => {
 
   restoreAllFromUser: async (userId) => {
     return await api(`/leads/admin/${userId}/softundeleteall`, "POST");
-  }
+  },
 
-  /* emptyTrashByUserId: async (userId) => {
+  emptyTrashByUserId: async (userId) => {
     return await api(`/leads/admin/${userId}/trash`, "DELETE");
-  } */
+  }
 };

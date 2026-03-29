@@ -25,6 +25,15 @@ public class LeadDao extends AbstractDao<LeadEntity> implements Serializable {
     }
 
     /**
+     * Vai buscar APENAS as leads que estão na lixeira de um utilizador normal
+     */
+    public List<LeadEntity> getTrashLeadsByUserId(Long userId) {
+        return em.createNamedQuery("lead.findSoftDelUserLeads", LeadEntity.class)
+                .setParameter("id", userId)
+                .getResultList();
+    }
+
+    /**
      * 1. SUPER GET (Pesquisa Dinâmica)
      * Centraliza todas as listagens do Admin com filtros opcionais.
      */
@@ -88,5 +97,15 @@ public class LeadDao extends AbstractDao<LeadEntity> implements Serializable {
         } catch (Exception e) {
             return null; // O Verifier no Service tratará o 404
         }
+    }
+
+    /**
+     * Elimina fisicamente todas as leads de um utilizador que estejam na lixeira
+     */
+    public int emptyTrashByUserId(Long userId) {
+        // JPQL para apagar as leads onde o owner é o utilizador e estão marcadas como softDeleted
+        return em.createQuery("DELETE FROM LeadEntity l WHERE l.owner.id = :userId AND l.softDeleted = true")
+                .setParameter("userId", userId)
+                .executeUpdate();
     }
 }

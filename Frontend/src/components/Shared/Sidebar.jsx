@@ -1,14 +1,13 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
 import { OverlayTrigger, Tooltip } from "react-bootstrap";
-import { useUserStore } from "../stores/UserStore";
-import "../App.css";
+import { useUserStore } from "../../stores/UserStore.js";
+import "../../App.css";
 
 const Sidebar = ({ isOpen }) => {
   const { userRole } = useUserStore();
   const isAdmin = userRole === "ADMIN";
 
-  // 1. Configuração centralizada e limpa
   const allItems = [
     { to: "/dashboard", icon: "bi-speedometer2", label: "Dashboard" },
     { to: "/leads", icon: "bi-clipboard2-plus", label: "Leads" },
@@ -16,7 +15,6 @@ const Sidebar = ({ isOpen }) => {
     { to: "/users", icon: "bi-gear", label: "Utilizadores", adminOnly: true },
   ];
 
-  // 2. Filtro de permissões
   const menuItems = allItems.filter(item => !item.adminOnly || isAdmin);
 
   return (
@@ -25,20 +23,9 @@ const Sidebar = ({ isOpen }) => {
           <ul className="nav flex-column">
             {menuItems.map((item) => (
                 <li className="nav-item w-100" key={item.to}>
-                  <OverlayTrigger
-                      placement="right"
-                      disabled={isOpen} // Simplificado: se aberto, o tooltip não ativa
-                      overlay={<Tooltip id={`t-${item.to}`}>{item.label}</Tooltip>}
-                  >
-                    <NavLink
-                        to={item.to}
-                        className={({ isActive }) =>
-                            `nav-link py-3 d-flex align-items-center ${isActive ? "active-link" : "text-dark"}`
-                        }
-                    >
-                      <div className="nav-icon-wrapper">
-                        <i className={`bi ${item.icon} fs-4`}></i>
-                      </div>
+                  <OverlayTrigger placement="right" disabled={isOpen} overlay={<Tooltip id={`t-${item.to}`}>{item.label}</Tooltip>}>
+                    <NavLink to={item.to} className={({ isActive }) => `nav-link py-3 d-flex align-items-center ${isActive ? "active-link" : "text-dark"}`}>
+                      <div className="nav-icon-wrapper"><i className={`bi ${item.icon} fs-4`}></i></div>
                       <span className="nav-label">{item.label}</span>
                     </NavLink>
                   </OverlayTrigger>

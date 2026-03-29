@@ -40,7 +40,7 @@ const KanbanColumn = ({
             lead={lead} 
             isTrashMode={isTrashMode} 
             isAdmin={isAdmin} 
-            {...cardActions} // Passa todas as funções de clique de uma vez (onEdit, onDeleteConfirm, etc)
+           cardActions = {cardActions}
           />
         ))}
       </div>

@@ -1,115 +1,46 @@
 import React from "react";
-import { Card, Button } from "react-bootstrap";
+import { Card } from "react-bootstrap";
+import ActionGroup from "../Shared/ActionGroup";
 
-const ClientCard = ({
-  client,
-  isTrashMode,
-  isAdmin,
-  onEdit,
-  onSoftDelete,
-  onRestore,
-  onHardDelete,
-}) => {
+const ClientCard = ({ client, isTrashMode, isAdmin, cardActions }) => { // CORREÇÃO: Recebe o cardActions
 
-    
-  return (
-    <Card
-      className="shadow-sm border-0 h-100"
-      style={{ borderTop: `4px solid ${isTrashMode ? "#dc3545" : "#0d6efd"}` }}
-    >
-      <Card.Body className="p-3 d-flex flex-column">
-        {/* CABEÇALHO DO CARTÃO */}
-        <h1
-          className="fw-bold mb-3 border-bottom mb-3 pb-4"
-          style={{
-            fontSize: "1.1rem",
-            color: isTrashMode ? "#6c757d" : "#2c3e50",
-          }}
-        >
-          {isTrashMode && <i className="bi bi-trash me-2 text-danger"></i>}
-          {client.organization || "Cliente Individual"}
-        </h1>
+    return (
+        <Card className="h-100 shadow-sm border-start border-2 border-primary">
+            <Card.Body className="d-flex flex-column">
+                <Card.Title className="fw-bold text-truncate mb-1">{client.name}</Card.Title>
 
-        {/* DETALHES (Email e Telefone) */}
+                {/* Dados de contacto */}
+                <div className="border-top pt-2 mt-2" style={{ fontSize: "0.95em" }}>
+                    <Card.Text className="text-primary small fw-bold mb-2">
+                        <i className="bi bi-building me-2"></i>{client.organization}
+                    </Card.Text>
+                    <div className="text-truncate mb-1">
+                        <i className="bi bi-envelope me-2 text-muted"></i>{client.email}
+                    </div>
+                    <div className="text-muted">
+                        <i className="bi bi-telephone me-2"></i>{client.phone}
+                    </div>
+                </div>
 
-        <div className="mb-3" style={{ fontSize: "0.85rem", flexGrow: 1 }}>
-          <div className="mb-1">
-            <i className="bi bi-envelope-fill text-muted me-2"></i>
-            {client.email}
-          </div>
-          <div>
-            <i className="bi bi-telephone-fill text-muted me-2"></i>
-            {client.phone || "N/A"}
-          </div>
-          <div className="text-muted  pb-2" style={{ fontSize: "0.85rem" }}>
-            <i className="bi bi-person-circle me-1 text-primary"></i>{" "}
-            {client.name}
-          </div>
-        </div>
+                {/* Rodapé do Cartão */}
+                <div className="d-flex justify-content-between align-items-center mt-auto pt-3">
+                    <div className="text-truncate me-2">
+                        <div className="fw-bold d-flex align-items-center" style={{ fontSize: "0.75rem", color: "#444" }}>
+                            <i className="bi bi-person-circle me-1 text-primary" style={{ fontSize: "0.8rem" }}></i>
+                            {client.firstName} {client.lastName}
+                        </div>
+                    </div>
 
-        {/* BOTÕES DE AÇÃO (No fundo do cartão) */}
-        <div className="d-flex justify-content-end gap-2 pt-2 mt-auto border-top">
-          {isTrashMode ? (
-            isAdmin ? (
-              <>
-                <Button
-                  variant="outline-success"
-                  size="sm"
-                  className="p-1 d-flex align-items-center justify-content-center"
-                  style={{ width: "28px", height: "28px" }}
-                  title="Restaurar"
-                  onClick={() => onRestore(client)}
-                >
-                  <i
-                    className="bi bi-arrow-counterclockwise"
-                    style={{ fontSize: "0.9rem" }}
-                  ></i>
-                </Button>
-                <Button
-                  variant="outline-danger"
-                  size="sm"
-                  className="p-1 d-flex align-items-center justify-content-center"
-                  style={{ width: "28px", height: "28px" }}
-                  title="Eliminar Permanente"
-                  onClick={() => onHardDelete(client)}
-                >
-                  <i
-                    className="bi bi-x-circle"
-                    style={{ fontSize: "0.9rem" }}
-                  ></i>
-                </Button>
-              </>
-            ) : (
-              <span className="text-muted small fst-italic">Aguarda Admin</span>
-            )
-          ) : (
-            <>
-              <Button
-                variant="outline-primary"
-                size="sm"
-                className="p-1 d-flex align-items-center justify-content-center"
-                style={{ width: "28px", height: "28px" }}
-                title="Editar"
-                onClick={() => onEdit(client)}
-              >
-                <i className="bi bi-pencil" style={{ fontSize: "0.9rem" }}></i>
-              </Button>
-              <Button
-                variant="outline-danger"
-                size="sm"
-                className="p-1 d-flex align-items-center justify-content-center"
-                style={{ width: "28px", height: "28px" }}
-                title="Mover para Lixeira"
-                onClick={() => onSoftDelete(client)}
-              >
-                <i className="bi bi-trash3" style={{ fontSize: "0.9rem" }}></i>
-              </Button>
-            </>
-          )}
-        </div>
-      </Card.Body>
-    </Card>
-  );
+                    <ActionGroup
+                        actions={cardActions} /* CORREÇÃO: Passa as ações para o ActionGroup */
+                        item={client}
+                        isTrashMode={isTrashMode}
+                        isAdmin={isAdmin}
+                    />
+                </div>
+            </Card.Body>
+        </Card>
+    );
 };
 
 export default ClientCard;

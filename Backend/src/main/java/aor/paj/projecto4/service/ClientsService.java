@@ -87,6 +87,24 @@ public Response restoreClient(@HeaderParam("token") String token, @PathParam("id
     return Response.ok(restoredClient).build();
 }
 
+    /**
+     * Endpoint: Lixeira exclusiva do próprio utilizador (User Normal)
+     * Rota React: api("/clients/my-trash", "GET")
+     */
+    @GET
+    @Path("/me-trash")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getMyTrash(@HeaderParam("token") String token) {
+        // 1. Apenas exige que seja um utilizador válido
+        verifier.verifyUser(token);
+
+        // 2. Chama o teu método inteligente. Como ele não é Admin,
+        // o teu Bean vai ignorar o 'null' e usar o ID do próprio utilizador.
+        List<ClientsDTO> trash = clientsBean.listDeletedClientsDTO(token, null);
+
+        return Response.ok(trash).build();
+    }
+
     // --- 2. OPERAÇÕES EXCLUSIVAS DE ADMINISTRADOR ---
 
    @DELETE

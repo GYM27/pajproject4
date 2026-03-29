@@ -81,20 +81,23 @@ public class LeadsBean implements Serializable {
     }
 
     /**
-     * Listar leads do utilizador autenticado
+     * Listar leads do utilizador autenticado (Ativas ou na Lixeira)
      */
     public List<LeadDTO> getLeadsByToken(String token, Boolean softDeleted) {
         UserEntity user = tokenBean.getUserEntityByToken(token);
-        List<LeadEntity> entities = leadDao.getLeadsByUserId(user.getId());
 
+        List<LeadEntity> entities;
+
+        // 1. Se o React enviou softDeleted=true (User clicou no botão da lixeira)
+        if (softDeleted != null && softDeleted) {
+            entities = leadDao.getTrashLeadsByUserId(user.getId());
+        } else {
+            // 2. Comportamento normal (vai buscar as leads ativas)
+            entities = leadDao.getLeadsByUserId(user.getId());
+        }
+
+        // 3. A base de dados já fez o filtro, só precisamos de converter para DTO
         return entities.stream()
-        // -------- Filtragem dinâmica ---
-                .filter(e -> {
-                    // Se showDeleted for true, mostra as apagadas (softDelete == true)
-                    // Se for false (ou null), mostra as ativas (softDelete == false)
-                    boolean filterValue = (softDeleted != null && softDeleted);
-                    return e.isSoftDeleted() == filterValue;
-                })
                 .map(this::entityToDTO)
                 .collect(Collectors.toList());
     }
@@ -215,5 +218,16 @@ public class LeadsBean implements Serializable {
         if (userDao.find(userId) == null) throw new WebApplicationException("User not found", 404);
 
         return leadDao.bulkUpdateSoftDelete(userId, false);
+    }
+
+    /**
+     * Esvaziar a lixeira (Hard Delete em massa) por utilizador
+     */
+    public int emptyTrash(Long userId) {
+        // Homogéneo: Uso do userDao.find
+        if (userDao.find(userId) == null) throw new WebApplicationException("User not found", 404);
+
+        // Delega para o DAO a execução da query de remoção física
+        return leadDao.emptyTrashByUserId(userId);
     }
 }

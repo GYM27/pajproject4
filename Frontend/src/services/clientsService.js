@@ -5,18 +5,23 @@ export const clientsService = {
   getClients: async (userRole, filters = {}) => {
     const { userId, showTrash } = filters;
 
-    // 1. SE O ECRÃ PEDIR A LIXEIRA
+    // --- 1. SE O ECRÃ PEDIR A LIXEIRA ---
     if (showTrash) {
-      if (userId) {
-        // Lixeira de um user específico (Mapeia para @GET /clients/user/{userId}/trash)
-        return await api(`/clients/user/${userId}/trash`, "GET");
+      if (userRole === "ADMIN") {
+        if (userId) {
+          // Admin vê lixeira de um user específico
+          return await api(`/clients/user/${userId}/trash`, "GET");
+        } else {
+          // Admin vê lixeira global
+          return await api("/clients/trash", "GET");
+        }
       } else {
-        // Lixeira Global (Mapeia para @GET /clients/trash)
-        return await api("/clients/trash", "GET");
+        // Utilizador Normal vê a sua própria lixeira
+        return await api("/clients/me-trash", "GET");
       }
     }
 
-    // 2. SE O ECRÃ PEDIR OS ATIVOS (Padrão)
+    // --- 2. SE O ECRÃ PEDIR OS CLIENTES ATIVOS ---
     const params = new URLSearchParams();
     if (userRole === "ADMIN" && userId) {
       params.append("userId", userId);

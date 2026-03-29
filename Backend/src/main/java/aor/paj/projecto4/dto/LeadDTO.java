@@ -108,7 +108,7 @@ public class LeadDTO {
         return softDeleted;
     }
 
-    public void setSoftDeleted(boolean softDelete) {
+    public void setSoftDeleted(boolean softDeleted) {
         this.softDeleted = softDeleted;
     }
 

@@ -177,4 +177,6 @@ public class ClientsBean {
         // Lixeira global: userId null e softDelete true
         return toDTOList(clientsDao.findClientsWithFilters(null, true));
     }
+
+
 }

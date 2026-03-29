@@ -1,7 +1,7 @@
 import React from "react";
 import { Navbar, Container, Nav } from "react-bootstrap";
-import HeaderLogo from "./Header/HeaderLogo";
-import UserMenu from "./Header/UserMenu";
+import HeaderLogo from "../Header/HeaderLogo.jsx";
+import UserMenu from "../Header/UserMenu.jsx";
 
 const Header = ({ onToggleMenu }) => {
   return (

@@ -1,93 +1,78 @@
 import React from "react";
-import { Button, Form } from "react-bootstrap";
+import { Form } from "react-bootstrap";
+import ActionGroup from "../Shared/ActionGroup";
+import ActionButton from "../Shared/ActionButton";
+import { BUTTON_TYPES } from "../Shared/buttonConfigs";
 
 const KanbanHeader = ({
-  displayName,
-  leadsCount,
-  isTrashMode,
-  setIsTrashMode,
-  isAdmin,
-  filters,
-  setFilters,
-  users,
-  actions, // Objeto com as funções: openCreate, openBulkDeleteConfirm, etc.
-}) => {
+                        displayName,
+                        leadsCount,
+                        isTrashMode,
+                        setIsTrashMode,
+                        isAdmin,
+                        filters,
+                        setFilters,
+                        users,
+                        actions,
+                      }) => {
   return (
-    <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-      <div>
-        <h2
-          className={`fw-bold m-0 ${isTrashMode ? "text-danger" : "text-secondary"}`}
-        >
-          {isTrashMode ? "LIXEIRA :" : "LEADS :"}{" "}
-          <span className="text-dark opacity-75">{displayName}</span>
-        </h2>
-        <p className="text-muted small m-0">Total: {leadsCount} leads</p>
+      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3 p-3 bg-white rounded shadow-sm">
+        {/* TÍTULO E CONTAGEM */}
+        <div>
+          <h2 className={`fw-bold m-0 ${isTrashMode ? "text-danger" : "text-secondary"}`} style={{ fontSize: '1.5rem' }}>
+            {isTrashMode ? "LIXEIRA :" : "LEADS :"}{" "}
+            <span className="text-dark opacity-75">{displayName}</span>
+          </h2>
+          <p className="text-muted small m-0">Total: {leadsCount} registos</p>
+        </div>
+
+        <div className="d-flex gap-2 align-items-center flex-wrap">
+          {/* FILTRO DE RESPONSÁVEL (APENAS ADMIN) */}
+          {isAdmin && (
+              <div className="d-flex align-items-center gap-2 me-2 border-end pe-3">
+                <span className="fw-bold small text-secondary">Responsável:</span>
+                <Form.Select
+                    size="sm"
+                    style={{ width: "180px" }}
+                    value={filters.userId}
+                    onChange={(e) => setFilters({ ...filters, userId: e.target.value })}
+                >
+                  <option value="">Todos</option>
+                  {users.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.firstName} {u.lastName}
+                      </option>
+                  ))}
+                </Form.Select>
+              </div>
+          )}
+
+          {/* BOTÃO ALTERNAR LIXEIRA */}
+          <ActionButton
+              {...(isTrashMode ? BUTTON_TYPES.TRASH_CLOSE : BUTTON_TYPES.TRASH_OPEN)}
+              onClick={() => setIsTrashMode(!isTrashMode)}
+          />
+
+          {/* GRUPO DE ACÇÕES EM MASSA (AUTOMÁTICO) */}
+          {isAdmin && filters.userId && leadsCount > 0 && (
+              <ActionGroup
+                  actions={actions}
+                  isTrashMode={isTrashMode}
+                  isAdmin={isAdmin}
+                  isBulk={true}
+              />
+          )}
+
+          {/* BOTÃO NOVA LEAD (ESTILO LIMPO) */}
+          {!isTrashMode && (
+              <ActionButton
+                  {...BUTTON_TYPES.ADD}
+                  tooltip="Nova Lead"
+                  onClick={() => actions.openCreate(1)}
+              />
+          )}
+        </div>
       </div>
-
-      <div className="d-flex gap-3 align-items-center">
-        <Button
-          variant={isTrashMode ? "primary" : "outline-primary"}
-          onClick={() => setIsTrashMode(!isTrashMode)}
-        >
-          <i
-            className={`bi ${isTrashMode ? "bi-arrow-left" : "bi-trash"} me-1`}
-          ></i>
-          {isTrashMode ? "Sair da Lixeira" : "Ver Lixeira"}
-        </Button>
-
-        {!isTrashMode && (
-          <>
-            <Button
-              variant="outline-primary"
-              onClick={() => actions.openCreate(1)}
-            >
-              <i className="bi bi-clipboard2-plus me-1"></i>Nova Lead
-            </Button>
-            {isAdmin && filters.userId && leadsCount > 0 && (
-              <Button
-                variant="outline-danger"
-                onClick={actions.openBulkDeleteConfirm}
-              >
-                <i className="bi bi-trash-fill me-1"></i> Mover Tudo
-              </Button>
-            )}
-          </>
-        )}
-
-        {isTrashMode && isAdmin && filters.userId && leadsCount > 0 && (
-          <>
-            <Button variant="success" onClick={actions.onRestoreAll}>
-              <i className="bi bi-arrow-counterclockwise me-1"></i> Restaurar
-              Tudo
-            </Button>
-            <Button variant="danger" onClick={actions.openEmptyTrashConfirm}>
-              <i className="bi bi-trash3 me-1"></i> Apagar Tudo
-            </Button>
-          </>
-        )}
-
-        {isAdmin && (
-          <div className="d-flex align-items-center gap-2">
-            <span className="fw-bold small text-secondary">Responsável:</span>
-            <Form.Select
-              size="sm"
-              style={{ width: "200px" }}
-              value={filters.userId}
-              onChange={(e) =>
-                setFilters({ ...filters, userId: e.target.value })
-              }
-            >
-              <option value="">Todos</option>
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.firstName} {u.lastName}
-                </option>
-              ))}
-            </Form.Select>
-          </div>
-        )}
-      </div>
-    </div>
   );
 };
 

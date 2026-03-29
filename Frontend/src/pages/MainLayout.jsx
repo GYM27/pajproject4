@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Outlet, Navigate } from "react-router-dom";
-import Sidebar from "../components/Sidebar.jsx";
-import Header from "../components/Header.jsx";
-import Footer from "../components/Footer.jsx";
+import Sidebar from "../components/Shared/Sidebar.jsx";
+import Header from "../components/Shared/Header.jsx";
+import Footer from "../components/Shared/Footer.jsx";
 
 const MainLayout = () => {
   const token = localStorage.getItem("token");

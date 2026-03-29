@@ -265,4 +265,23 @@ public class LeadService {
         return Response.ok(new ErrorResponse(totalRecuperado + " leads recuperadas com sucesso.", 200)).build();
     }
 
+    @DELETE
+    @Path("/admin/{userId}/trash")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response emptyTrashByUserId(
+            @HeaderParam("token") String token,
+            @PathParam("userId") Long userId) {
+
+
+        // 1. Segurança: Verificação estrita de Administrador
+        verifier.verifyAdmin(token);
+
+        // 2. Execução: O Bean executa o Delete definitivo (Hard Delete) na BD
+        // (Certifica-te que o teu leadsBean tem um método chamado emptyTrash ou similar que devolva o int de linhas apagadas)
+        int totalApagado = leadsBean.emptyTrash(userId);
+
+        // 3. Resposta: Seguindo o teu padrão, informamos o Admin do impacto da ação
+        return Response.ok(new ErrorResponse(totalApagado + " leads eliminadas permanentemente com sucesso.", 200)).build();
+    }
+
 }
