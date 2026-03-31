@@ -1,29 +1,42 @@
 import api from "./api";
 
+/**
+ * SERVIÇO: clientsService
+ * ----------------------
+ * DESCRIÇÃO: Encapsula todas as chamadas à API JAX-RS para a entidade Client.
+ * FUNCIONALIDADE: Implementa a lógica de negócio de clientes, incluindo
+ * filtragem por utilizador, gestão de lixeira (Soft Delete) e remoção permanente.
+ */
 export const clientsService = {
-  // ROTEADOR CENTRAL DE LISTAGEM
+
+  /**
+   * ROTEADOR CENTRAL DE LISTAGEM (PADRÃO DE ESTRATÉGIA):
+   * Este método decide qual o endpoint chamar baseando-se no Role e no estado (Lixeira ou Ativo).
+   * Resolve a complexidade de rotas múltiplas num único ponto de entrada.
+   */
   getClients: async (userRole, filters = {}) => {
     const { userId, showTrash } = filters;
 
-    // --- 1. SE O ECRÃ PEDIR A LIXEIRA ---
+    // --- 1. GESTÃO DE LIXEIRA (REGRA A9): ---
     if (showTrash) {
       if (userRole === "ADMIN") {
         if (userId) {
-          // Admin vê lixeira de um user específico
+          // Admin consulta a lixeira de um colaborador específico (@GET /clients/user/{userId}/trash)
           return await api(`/clients/user/${userId}/trash`, "GET");
         } else {
-          // Admin vê lixeira global
+          // Admin consulta a lixeira global do sistema (@GET /clients/trash)
           return await api("/clients/trash", "GET");
         }
       } else {
-        // Utilizador Normal vê a sua própria lixeira
+        // Utilizador Normal consulta apenas os seus próprios dados eliminados (@GET /clients/me-trash)
         return await api("/clients/me-trash", "GET");
       }
     }
 
-    // --- 2. SE O ECRÃ PEDIR OS CLIENTES ATIVOS ---
+    // --- 2. GESTÃO DE CLIENTES ATIVOS: ---
     const params = new URLSearchParams();
     if (userRole === "ADMIN" && userId) {
+      // Injeta o ID do utilizador alvo como Query Parameter para filtragem no SQL.
       params.append("userId", userId);
     }
 
@@ -33,70 +46,62 @@ export const clientsService = {
     return await api(url, "GET");
   },
 
-  // --- Rota para a Lixeira do Admin ---
-  // Mapeia para @GET /clients/user/{userId}/trash
-  getTrashByUserId: async (userId) => {
-    return await api(`/clients/user/${userId}/trash`, "GET");
-  },
+  /** * OPERAÇÕES CRUD (CREATE, READ, UPDATE, DELETE):
+   * Mapeamento direto para os métodos do ClientResource no Java.
+   */
 
-  // Mapeia para @POST /clients no Java
-  // Metodo: addClient
+  // Registo de novo cliente pelo próprio utilizador
   createClient: async (clientDto) => {
     return await api("/clients", "POST", clientDto);
   },
 
-  // Mapeia para @POST /clients/user/{userId} no Java
-  // Metodo: createClientForUser (Exclusivo Admin)
+  // Criação de cliente atribuído a outrem (Exclusivo Admin)
   createClientForUser: async (userId, clientDto) => {
     return await api(`/clients/user/${userId}`, "POST", clientDto);
   },
 
-  // Mapeia para @PUT /clients/{id} no Java
-  // Metodo: updateClient
+  // Atualização de dados (Mapeia para @PUT /clients/{id})
   updateClient: async (id, clientDto) => {
     return await api(`/clients/${id}`, "PUT", clientDto);
   },
 
-  // Mapeia para @DELETE /clients/{id} no Java
-  // Metodo: softDelete
+  /** * CICLO DE VIDA E ELIMINAÇÃO (REGRAS A9 e A14): */
+
+  // Soft Delete: Marca o cliente como 'deleted' sem o remover da base de dados.
   softDeleteClient: async (id) => {
     return await api(`/clients/${id}`, "DELETE");
   },
 
-  // --- Verbo PATCH conforme o Java ---
-  // Mapeia para @PATCH /clients/{id}/restore no Java
-  // Metodo: restoreClient
+  // Restaurar: Reverte o Soft Delete (Mapeia para @PATCH no Java conforme as boas práticas REST).
   restoreClient: async (id) => {
     return await api(`/clients/${id}/restore`, "PATCH");
   },
 
-  // Mapeia para @DELETE /clients/{id}/permanent no Java
-  // Metodo: permanentDelete (Hard Delete - Admin)
+  // Hard Delete: Remoção definitiva do registo no PostgreSQL (Restrito a Admin).
   permanentDeleteClient: async (id) => {
     return await api(`/clients/${id}/permanent`, "DELETE");
   },
 
-  // --- ALTERAÇÃO: Rotas de Massa corrigidas para /status/... ---
-  // Mapeia para @PATCH /clients/user/{userId}/status/deactivate-all no Java
-  // Metodo: softDeleteAllUserClients
+  /** * OPERAÇÕES EM MASSA (BULK ACTIONS):
+   * Implementam a gestão rápida de grandes volumes de dados para Administradores.
+   */
+
+  // Desativa todos os clientes de um utilizador específico de uma só vez.
   softDeleteAllFromUser: async (userId) => {
     return await api(`/clients/user/${userId}/status/deactivate-all`, "PATCH");
   },
 
-  // Mapeia para @PATCH /clients/user/{userId}/status/activate-all no Java
-  // Metodo: restoreAllUserClients
+  // Restaura todos os clientes eliminados de um utilizador.
   restoreAllFromUser: async (userId) => {
     return await api(`/clients/user/${userId}/status/activate-all`, "PATCH");
   },
 
-  // Mapeia para @DELETE /clients/user/{userId}/trash no Java
-  // Metodo: emptyTrash
+  // Limpa definitivamente a lixeira de um colaborador.
   emptyTrashByUserId: async (userId) => {
     return await api(`/clients/user/${userId}/trash`, "DELETE");
   },
 
-  // Mapeia para @GET /clients/trash no Java
-  // Metodo: getAllDeletedClients (Admin - Lixeira global)
+  // Consulta administrativa da lixeira de todo o CRM.
   getAllTrash: async () => {
     return await api("/clients/trash", "GET");
   }

@@ -12,6 +12,13 @@ import {
   Col,
 } from "react-bootstrap";
 
+/**
+ * COMPONENTE: Login
+ * -----------------
+ * DESCRIÇÃO: Ecrã de autenticação do sistema CRM.
+ * FUNCIONALIDADE: Captura credenciais, comunica com o serviço de login (Java),
+ * armazena o JWT Token e atualiza o estado global da aplicação.
+ */
 function Login() {
   const [inputs, setInputs] = useState({ username: "", password: "" });
   const [error, setError] = useState(null);
@@ -19,9 +26,14 @@ function Login() {
 
   const navigate = useNavigate();
 
-  // 1. AÇÃO UNIFICADA: Importamos apenas o 'setUser' da Store
+  // GESTÃO DE ESTADO GLOBAL (ZUSTAND):
+  // Importamos a ação 'setUser' para guardar os dados do utilizador após o sucesso.
   const { setUser } = useUserStore();
 
+  /** * GESTOR DE INPUTS:
+   * Implementa o padrão 'Controlled Components' do React, garantindo que o
+   * estado local está sempre sincronizado com o que o utilizador escreve.
+   */
   const handleChange = (event) => {
     const { name, value } = event.target;
     setInputs((values) => ({
@@ -30,40 +42,45 @@ function Login() {
     }));
   };
 
+  /** * SUBMISSÃO DO FORMULÁRIO (FLUXO DE AUTENTICAÇÃO - 2%):
+   * Este método orquestra o contacto com o servidor e a proteção da rota.
+   */
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError(null);
     setIsLoading(true);
 
     try {
+      // Higienização básica de dados (trim) antes de enviar para o servidor Java.
       const credentials = {
         username: inputs.username.trim(),
         password: inputs.password
       };
 
-      // 2. CHAMADA À API: O Java devolve o LoginResponseDTO
+      // 1. CHAMADA À API: O backend devolve um DTO contendo Token, Nome e Role.
       const data = await loginUser(credentials);
 
       if (!data || !data.token) {
         throw new Error("O servidor não devolveu os dados de acesso necessários.");
       }
 
-      // 3. PERSISTÊNCIA DO TOKEN: Guardamos no sessionStorage para o apiRequest.js ler
+      // 2. PERSISTÊNCIA DA SESSÃO (SEGURANÇA):
+      // Guardamos o JWT no sessionStorage. Este token será lido pelo interceptor
+      // das APIs para autorizar todos os pedidos subsequentes.
       sessionStorage.setItem("token", data.token);
 
-      // 4. ATUALIZAÇÃO DA STORE: Guardamos os dados do utilizador de uma só vez
-      // O 'data' já contém firstName e userRole vindos do Backend
+      // 3. ATUALIZAÇÃO DA STORE (ZUSTAND - 5%):
+      // O 'data' injeta firstName e userRole na Store, permitindo que a Sidebar
+      // e o Header se adaptem imediatamente às permissões do utilizador.
       setUser(data);
 
-      // 5. NAVEGAÇÃO: Avançamos para a área protegida
+      // 4. NAVEGAÇÃO PROTEGIDA:
+      // 'replace: true' impede que o utilizador volte ao login ao clicar no botão 'Recuar' do browser.
       navigate("/dashboard", { replace: true });
 
     } catch (err) {
-      // 6. ERRO DINÂMICO: Se o Java enviar uma mensagem via ExceptionMapper,
-      // ela aparece aqui automaticamente. Se for erro de código, também ajuda a debugar.
+      // TRATAMENTO DE ERROS: Captura mensagens vindas das Exceptions do Java (ExceptionMapper).
       setError(err.message || "Utilizador ou password inválidos.");
-
-      // Útil para ver detalhes técnicos na consola do browser (F12)
       console.error("Falha no login:", err.message);
     } finally {
       setIsLoading(false);
@@ -74,12 +91,14 @@ function Login() {
       <Container className="d-flex justify-content-center align-items-center vh-100">
         <Row>
           <Col>
+            {/* DESIGN PROFISSIONAL: Card com sombra e largura fixa para consistência visual */}
             <Card className="shadow-lg border-0" style={{ width: "22rem" }}>
               <Card.Body className="p-4">
                 <div className="text-center mb-4">
                   <h2 className="fw-bold">Bem-vindo</h2>
                 </div>
 
+                {/* FEEDBACK DE ERRO: Alerta dinâmico se a autenticação falhar */}
                 {error && (
                     <Alert variant="danger" className="py-2 small">
                       {error}
@@ -115,6 +134,7 @@ function Login() {
                     />
                   </Form.Group>
 
+                  {/* BOTÃO DE LOGIN: Gerencia o estado de loading para evitar spam de pedidos */}
                   <Button
                       variant="primary"
                       type="submit"

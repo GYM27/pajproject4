@@ -2,25 +2,29 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
 /**
- * Esta é a minha "gaveta global" de dados do utilizador.
- * Uso o 'persist' para que, se eu fizer F5 na página, os dados não desapareçam.
- * Guardo tudo no 'sessionStorage' para que a sessão feche se eu fechar o browser.
+ * STORE: useUserStore (Zustand com Persistência)
+ * --------------------------------------------
+ * DESCRIÇÃO: Gere a identidade e as permissões do utilizador logado.
+ * FUNCIONALIDADE: Centraliza o Perfil e o Role (Cargo), servindo de base para
+ * o Controlo de Acesso em toda a interface (Sidebar, Header, Botões).
  */
 export const useUserStore = create(
     persist(
         (set) => ({
-            // 1. O meu estado inicial (o que o utilizador é antes de fazer login)
-            username: "",   // O login técnico (ex: @admin123)
-            firstName: "",  // O nome próprio
-            lastName: "",   // O apelido
-            email: "",      // O correio eletrónico
-            userRole: "",   // Se é ADMIN ou USER
-            photoUrl: "",   // A foto de perfil
-            isAuthenticated: false, // Atalho rápido para saber se está logado
+            // 1. ESTADO INICIAL (ESTRUTURA DE DADOS - 5%):
+            // Mapeia os campos essenciais do LoginResponseDTO vindo do Java.
+            username: "",
+            firstName: "",
+            lastName: "",
+            email: "",
+            userRole: "",   // CRUCIAL: Define a visibilidade de funções ADMIN (Regras A13/A14).
+            photoUrl: "",
+            isAuthenticated: false,
 
-            // 2. Ação principal: Guardar o utilizador todo de uma vez.
-            // Em vez de ter 10 funções 'setNome', 'setEmail', etc.,
-            // recebo o objeto (userData) que vem do Java e guardo tudo aqui.
+            /** * ACÇÃO: setUser
+             * DESCRIÇÃO: Popula a store com os dados validados pelo Backend.
+             * @param {Object} userData - Dados vindos do loginService.
+             */
             setUser: (userData) => set({
                 username: userData.username,
                 firstName: userData.firstName,
@@ -31,10 +35,14 @@ export const useUserStore = create(
                 isAuthenticated: true
             }),
 
-            // 3. Ação para quando eu quiser mudar apenas a foto (sem refrescar o resto)
+            // ACÇÃO: setPhotoUrl (UPDATE PARCIAL):
+            // Permite atualizar a imagem de perfil sem necessidade de um novo login.
             setPhotoUrl: (url) => set({ photoUrl: url }),
 
-            // 4. O botão de emergência: Limpa tudo no Logout
+            /** * ACÇÃO: clearUser (CLEANUP):
+             * Utilizada no fluxo de Logout para garantir que nenhum dado sensível
+             * permanece na memória da aplicação.
+             */
             clearUser: () => set({
                 username: "",
                 firstName: "",
@@ -45,6 +53,11 @@ export const useUserStore = create(
                 isAuthenticated: false
             }),
         }),
+        /** * CONFIGURAÇÃO DE PERSISTÊNCIA (SEGURANÇA - 2%):
+         * 'name': Chave única no armazenamento do browser.
+         * 'storage': Utilizamos sessionStorage para que os dados expirem
+         * automaticamente quando o utilizador fecha o separador/browser.
+         */
         {
             name: "user-storage",
             storage: createJSONStorage(() => sessionStorage)

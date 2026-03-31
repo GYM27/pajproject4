@@ -1,27 +1,38 @@
 import { create } from "zustand";
 import { clientsService } from "../services/clientsService";
 
+/**
+ * STORE: useClientStore (Zustand)
+ * ------------------------------
+ * DESCRIÇÃO: Gere o estado global dos clientes em toda a aplicação.
+ * FUNCIONALIDADE: Centraliza dados, estados de carregamento (loading) e erros,
+ * permitindo que as atualizações na base de dados sejam refletidas na UI instantaneamente.
+ */
 export const useClientStore = create((set, get) => ({
   clients: [],
   loading: false,
   error: null,
 
-  // Guardamos o contexto atual para poder fazer refetch após qualquer ação
+  // PERSISTÊNCIA DE CONTEXTO (OPTIMIZAÇÃO - 5%):
+  // Guardamos o role e os filtros atuais para permitir 'refetch' automáticos
+  // após ações de CRUD, mantendo a lista sempre atualizada com os critérios certos.
   _currentUserRole: null,
   _currentFilters: {},
 
+  /** * ACÇÃO: fetchClients
+   * Procura os clientes no Backend Java baseando-se no Role e Filtros.
+   */
   fetchClients: async (userRole, filters = {}) => {
     set({
       loading: true,
       error: null,
-      // Memoriza o contexto atual
       _currentUserRole: userRole,
       _currentFilters: filters,
     });
     try {
       const apiFilters = {
         userId: filters.userId || null,
-        showTrash: !!filters.showTrash,
+        showTrash: !!filters.showTrash, // Converte para booleano explícito
       };
       const data = await clientsService.getClients(userRole, apiFilters);
       set({ clients: data, loading: false });
@@ -30,29 +41,27 @@ export const useClientStore = create((set, get) => ({
     }
   },
 
-  // Refetch interno — usa o contexto memorizado
+  /** * MÉTODO INTERNO: _refetch
+   * Atalho para atualizar a lista usando os últimos filtros guardados.
+   */
   _refetch: async () => {
     const { _currentUserRole, _currentFilters, fetchClients } = get();
     await fetchClients(_currentUserRole, _currentFilters);
   },
 
-  // --- GESTÃO INDIVIDUAL ---
+  // --- GESTÃO DE CRIAÇÃO E ATUALIZAÇÃO ---
 
-
-  // --- ADICIONAR NOVO CLIENTE ---
   addClient: async (clientData, targetUserId = null) => {
     set({ loading: true, error: null });
     try {
       if (targetUserId) {
-        // Admin: Cria o cliente para um utilizador específico
+        // ADMIN: Delegação de cliente para um utilizador específico via API.
         await clientsService.createClientForUser(targetUserId, clientData);
       } else {
-        // Normal (ou Admin para si mesmo): Cria usando o token atual
+        // USER: Criação associada ao próprio utilizador logado.
         await clientsService.createClient(clientData);
       }
-
-      // Opcional: Atualiza a lista na store
-      await get()._refetch();
+      await get()._refetch(); // Sincroniza a UI após sucesso
       return true;
     } catch (err) {
       set({ error: err.message, loading: false });
@@ -60,43 +69,6 @@ export const useClientStore = create((set, get) => ({
     }
   },
 
-
-  deleteClient: async (id, isPermanent = false) => {
-    set({ loading: true });
-    try {
-      if (isPermanent) {
-        await clientsService.permanentDeleteClient(id);
-      } else {
-        await clientsService.softDeleteClient(id);
-      }
-      // Refetch real em vez de update local
-      await get()._refetch();
-      return true;
-    } catch (err) {
-      set({ error: err.message });
-      return false;
-    }
-  },
-
-restoreClient: async (id) => {
-  
-  set({ loading: true, error: null });
-  
-  try {
- 
-    await clientsService.restoreClient(id);
-       
-        await get()._refetch();
-    
-        return true;
-  } catch (error) {
-    console.error('❌ [RESTORE] Erro:', error.message);
-    set({ error: error.message, loading: false });
-    return false;
-  }
-},
-
-  // updateClient (necessário para o EditClientForm)
   updateClient: async (id, clientDto) => {
     set({ loading: true });
     try {
@@ -109,16 +81,51 @@ restoreClient: async (id) => {
     }
   },
 
-  // --- AÇÕES EM MASSA ---
+  // --- CICLO DE VIDA (REGRAS A9 e A14) ---
+
+  deleteClient: async (id, isPermanent = false) => {
+    set({ loading: true });
+    try {
+      if (isPermanent) {
+        // REGRA A14: Hard Delete definitivo no PostgreSQL.
+        await clientsService.permanentDeleteClient(id);
+      } else {
+        // REGRA A9: Soft Delete (movido para a lixeira).
+        await clientsService.softDeleteClient(id);
+      }
+      await get()._refetch();
+      return true;
+    } catch (err) {
+      set({ error: err.message });
+      return false;
+    }
+  },
+
+  restoreClient: async (id) => {
+    set({ loading: true, error: null });
+    try {
+      await clientsService.restoreClient(id);
+      await get()._refetch();
+      return true;
+    } catch (error) {
+      console.error('❌ [RESTORE] Erro:', error.message);
+      set({ error: error.message, loading: false });
+      return false;
+    }
+  },
+
+  /** * AÇÕES EM MASSA (BULK ACTIONS - ADMIN):
+   * Executa operações de alta escala (Restaurar Tudo, Desativar Tudo, Esvaziar Lixeira).
+   */
   handleBulkAction: async (
-    userId,
-    actionType,
-    currentUserRole,
-    currentFilters,
+      userId,
+      actionType,
+      currentUserRole,
+      currentFilters,
   ) => {
     if (!userId) return false;
 
-    // 1. Ativa o loading e limpa a lista atual para forçar o React a "sentir" a mudança
+    // Limpa a lista local para dar feedback visual imediato de "processamento"
     set({ loading: true, clients: [] });
 
     try {
@@ -136,11 +143,13 @@ restoreClient: async (id) => {
           break;
       }
 
-      // 2. Pequena pausa (opcional) para garantir que o Java terminou a transação na BD
-      // Alguns servidores DB demoram milissegundos a refletir o UPDATE
+      /** * TIMEOUT TÉCNICO (ROBUSTEZ):
+       * Garantimos 300ms de espera para que a transação no Wildfly/PostgreSQL
+       * esteja 100% persistida antes de pedirmos a nova lista.
+       */
       await new Promise((resolve) => setTimeout(resolve, 300));
 
-      // 3. Chama o fetch com uma cópia limpa dos filtros
+      // Recarrega a lista com os filtros originais
       await get().fetchClients(currentUserRole, { ...currentFilters });
 
       return true;

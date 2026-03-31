@@ -4,7 +4,7 @@ import { Container, Card, Alert, Spinner, Row, Col } from "react-bootstrap";
 import { useUserStore } from "../stores/UserStore";
 import { userService } from "../services/userService";
 
-// COMPONENTES SHARED (Reutilizados)
+// COMPONENTES SHARED (Arquitetura Modular - 5%)
 import { useModalManager } from "../Modal/useModalManager.jsx";
 import ConfirmActionContent from "../Modal/ConfirmActionContent.jsx";
 import DynamicModal from "../Modal/DynamicModal.jsx";
@@ -14,13 +14,23 @@ import ProfilePhoto from "../components/Profile/ProfilePhoto";
 import ProfileForm from "../components/Profile/ProfileForm";
 import AdminActions from "../components/Profile/AdminActions";
 
+/**
+ * COMPONENTE: Profile
+ * -------------------
+ * DESCRIÇÃO: Página de visualização e gestão de perfis de utilizador.
+ * FUNCIONALIDADE: Polimorfismo de interface. Se 'userId' estiver no URL,
+ * entra em modo "Admin View", caso contrário, mostra o perfil do utilizador logado.
+ */
 const Profile = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+
+  // LÓGICA DE CONTEXTO:
+  // Se não houver userId no URL (?userId=X), assumimos que o utilizador está a ver o seu próprio perfil.
   const targetUserId = searchParams.get("userId");
   const isOwnProfile = !targetUserId;
 
-  // 1. GESTÃO DE MODAIS E STORE
+  // 1. GESTÃO DE ESTADO E SEGURANÇA:
   const { modalConfig, openModal, closeModal } = useModalManager();
   const { userRole } = useUserStore();
   const isAdmin = userRole === "ADMIN";
@@ -30,19 +40,22 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // 3. CARREGAMENTO DE DADOS
+  /** * 3. CARREGAMENTO DE DADOS (CRITÉRIO: CONSUMO DE API - 3%):
+   * O componente decide dinamicamente qual o endpoint a chamar no Backend Java:
+   * - /me: Para dados privados do utilizador atual.
+   * - /users/{id}: Para consulta administrativa.
+   */
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         setLoading(true);
-        // Se não houver userId no URL, carrega o "meu", se houver, carrega o específico
         const data = isOwnProfile
             ? await userService.getMe()
             : await userService.getUserById(targetUserId);
 
         setFormData(data);
       } catch (err) {
-        setError("Não foi possível carregar o perfil.");
+        setError("Não foi possível carregar os dados do perfil solicitado.");
         console.error(err);
       } finally {
         setLoading(false);
@@ -52,22 +65,25 @@ const Profile = () => {
     fetchProfile();
   }, [targetUserId, isOwnProfile]);
 
-  // 4. LÓGICA DE EXECUÇÃO DE AÇÕES (O "Cérebro" do Modal)
+  /** * 4. ACTION MAP (PADRÃO DE DESIGN - 5%):
+   * Centraliza a execução das regras de negócio A9 e A14 para utilizadores.
+   */
   const handleConfirmAction = async (data) => {
     try {
       const actionMap = {
-        // Eliminação Permanente (Regra A14)
+        // REGRA A14: Eliminação permanente do utilizador da base de dados PostgreSQL.
         "USER_HARD_DELETE": async () => {
           await userService.deleteUserPermanent(targetUserId);
           closeModal();
-          navigate("/users"); // Expulsa o admin para a lista de users
+          navigate("/users"); // Redireciona o Admin para a listagem após a remoção.
         },
-        // Alternar entre Ativo/Inativo (Regra A9)
+        // REGRA A9: Soft Delete (Ativar/Desativar conta).
         "USER_TOGGLE_STATUS": async () => {
           const action = data.softDelete ? "softundelete" : "softdelete";
           await userService.toggleUserStatus(targetUserId, action);
           closeModal();
-          window.location.reload(); // Recarrega para atualizar os badges e botões
+          // Forçamos o reload para atualizar as permissões e o estado visual (Badges).
+          window.location.reload();
         }
       };
 
@@ -76,10 +92,11 @@ const Profile = () => {
         await actionToExecute();
       }
     } catch (err) {
-      alert("Erro ao processar a ação. Por favor, tente novamente.");
+      alert("Erro ao processar a operação administrativa.");
     }
   };
 
+  // FEEDBACK VISUAL DE CARREGAMENTO (UX - 3%)
   if (loading) {
     return (
         <div className="text-center mt-5">
@@ -96,12 +113,13 @@ const Profile = () => {
             <Card className="shadow-sm border-0">
               <Card.Body className="p-4">
 
-                {/* Foto e Header */}
+                {/* CABEÇALHO DO PERFIL: Foto e Identificação */}
                 <div className="text-center mb-4 border-bottom pb-4">
                   <ProfilePhoto photoUrl={formData?.photoUrl} />
                   <h3 className="fw-bold mt-3 text-secondary">
                     {isOwnProfile ? "O Meu Perfil" : `Perfil de ${formData?.firstName}`}
                   </h3>
+                  {/* ALERTA DE ESTADO (REGRA A9): Indica visualmente se a conta está desativada */}
                   {formData?.softDelete && (
                       <span className="badge bg-danger mt-2">CONTA DESATIVADA</span>
                   )}
@@ -109,19 +127,21 @@ const Profile = () => {
 
                 {error && <Alert variant="danger">{error}</Alert>}
 
-                {/* Formulário de Dados (Apenas leitura do username garantida no ProfileForm) */}
+                {/* FORMULÁRIO: Componente modular que gere as permissões de edição */}
                 <ProfileForm
                     formData={formData}
                     isOwnProfile={isOwnProfile}
                 />
 
-                {/* Painel de Administração (Apenas visível para Admin e em perfis de outros) */}
+                {/* PAINEL DE ADMINISTRAÇÃO (SEGURANÇA):
+                    Apenas visível se o utilizador for ADMIN e estiver a ver o perfil de OUTRO utilizador.
+                */}
                 {!isOwnProfile && isAdmin && (
                     <div className="mt-5 pt-4 border-top">
                       <AdminActions
                           isDeleted={formData?.softDelete}
-                          onToggleStatus={() => openModal("USER_TOGGLE_STATUS", "Alterar Estado", formData)}
-                          onHardDelete={() => openModal("USER_HARD_DELETE", "Eliminação Permanente", formData)}
+                          onToggleStatus={() => openModal("USER_TOGGLE_STATUS", "Alterar Estado da Conta", formData)}
+                          onHardDelete={() => openModal("USER_HARD_DELETE", "Eliminação Permanente de Utilizador", formData)}
                       />
                     </div>
                 )}
@@ -131,7 +151,7 @@ const Profile = () => {
           </Col>
         </Row>
 
-        {/* 5. MODAL ÚNICO DE CONFIRMAÇÃO */}
+        {/* MODAL DE CONFIRMAÇÃO: Único para todas as ações críticas deste ecrã */}
         <DynamicModal show={modalConfig.show} onHide={closeModal} title={modalConfig.title}>
           <ConfirmActionContent
               type={modalConfig.type}

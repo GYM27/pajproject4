@@ -36,7 +36,7 @@ public class UserService {
     @Produces(MediaType.APPLICATION_JSON)
     public Response registerUser(@Valid UserDTO user) {
         usersBean.registerUser(user);
-        return Response.status(Response.Status.CREATED).build();
+        return Response.status(Response.Status.CREATED).entity(user).build();
     }
 
     /**
