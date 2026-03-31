@@ -18,17 +18,21 @@ const UserMenu = () => {
   const { firstName, photoUrl, clearUser } = useUserStore();
 
   /**
-   * LÓGICA DE LOGOUT (CRITÉRIO: SEGURANÇA):
-   * Garante a limpeza total dos dados da sessão tanto no estado da aplicação (Zustand)
-   * como no armazenamento persistente do browser (localStorage/sessionStorage).
+   * LÓGICA DE LOGOUT CORRIGIDA:
+   * 1. Limpa o sessionStorage (onde o token e a store realmente residem).
+   * 2. Limpa o estado reativo da Store (Zustand) para forçar o re-render da UI.
+   * 3. Redireciona para o login com 'replace' para limpar o histórico.
    */
   const handleLogout = () => {
-    // 1. Limpa o estado volátil da store
+    // 1. LIMPEZA FÍSICA: O teu apiRequest e UserStore usam sessionStorage!
+    sessionStorage.clear();
+    localStorage.clear(); // Por precaução, caso tenhas restos de dados aqui
+
+    // 2. LIMPEZA REATIVA: Remove o role de "ADMIN" da memória do React
     clearUser();
-    // 2. Remove tokens e dados persistidos para impedir acessos indevidos após sair
-    localStorage.clear();
-    // 3. Redireciona para a página de autenticação
-    navigate("/login");
+
+    // 3. NAVEGAÇÃO FORÇADA: Impede que o user use o botão "Voltar" para ver o Dashboard
+    navigate("/login", { replace: true });
   };
 
   /**
