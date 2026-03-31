@@ -45,7 +45,7 @@ const NewLeads = () => {
         {error && <Alert variant="danger">{error}</Alert>}
         <AdminAssignmentField isAdmin={isAdmin} value={targetUserId} onChange={setTargetUserId} />
         <Form.Group className="mb-3">
-          <Form.Label>Título da Oportunidade</Form.Label>
+          <Form.Label>Título da Lead</Form.Label>
           <Form.Control name="title" value={leadData.title} onChange={handleChange} required />
         </Form.Group>
         <Form.Group className="mb-3">

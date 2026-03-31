@@ -10,7 +10,7 @@ const BASE_URL = "http://localhost:8080/LuisF-proj4/rest";
 const apiRequest = async (endpoint, method = "GET", body = null) => {
   
   // 1. Recupera o token de sessão da persistência local (localStorage)
-  const token = localStorage.getItem("token");
+  const token = sessionStorage.getItem("token");
   
   // 2. Define os cabeçalhos padrão para comunicação JSON
   const headers = {

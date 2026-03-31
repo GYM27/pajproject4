@@ -15,21 +15,27 @@ const NewClient = () => {
 
     const [formData, setFormData] = useState({ name: "", email: "", phone: "", organization: "" });
     const [targetUserId, setTargetUserId] = useState(location.state?.targetId || "");
-    const [error, setError] = useState(null);
+    const [localError, setLocalError] = useState(null);
 
     const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setError(null);
+        setLocalError(null);
         const success = await addClient(formData, isAdmin && targetUserId ? targetUserId : null);
-        if (success) navigate("/clients");
-        else setError("Erro ao criar cliente.");
+        if (success) {
+            navigate("/clients");
+        } else {// Vamos à Store buscar a mensagem exata que o servidor Java devolveu!
+            const errorMessage = useClientStore.getState().error;
+
+        // Se o Java mandou mensagem, mostramos. Senão, usamos um genérico de segurança.
+        setLocalError(errorMessage || "Erro ao criar cliente. Verifique os dados.");
+    }
     };
 
     return (
         <FormContainer title="Novo Cliente" icon="bi-person-plus" loading={loading} onSubmit={handleSubmit} onCancel={() => navigate("/clients")}>
-            {error && <Alert variant="danger">{error}</Alert>}
+            {localError && <Alert variant="danger">{localError}</Alert>}
             <AdminAssignmentField isAdmin={isAdmin} value={targetUserId} onChange={setTargetUserId} label="Responsável pelo Cliente" />
             <Form.Group className="mb-3"><Form.Label>Nome *</Form.Label><Form.Control name="name" value={formData.name} onChange={handleChange} required /></Form.Group>
             <Form.Group className="mb-3"><Form.Label>Email *</Form.Label><Form.Control type="email" name="email" value={formData.email} onChange={handleChange} required /></Form.Group>

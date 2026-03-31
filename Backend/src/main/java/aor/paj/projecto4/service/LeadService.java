@@ -8,16 +8,7 @@ import aor.paj.projecto4.dto.LeadDTO;
 import aor.paj.projecto4.exception.ErrorResponse;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.DELETE;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.HeaderParam;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.PUT;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
@@ -140,7 +131,27 @@ public class LeadService {
     }
 
 
+
+
     //*************************Secção do Administrador***************************************************************
+
+    /**
+     * Restaurar uma Lead da lixeira.
+     */
+    @PATCH
+    @Path("/{leadId}/restore")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response restoreLead(@HeaderParam("token") String token,
+                                @PathParam("leadId") Long leadId) {
+
+        // 1. O verifier garante que a lead pertence ao utilizador
+        verifier.verifyLeadOwnership(token, leadId);
+
+        // 2. O Bean faz o trabalho de mudar a flag na BD
+        leadsBean.restoreLead(leadId);
+
+        return Response.ok(new ErrorResponse("Lead restaurada com sucesso", 200)).build();
+    }
 
     /**
      * Lista todas as leads do sistema com filtros dinâmicos.

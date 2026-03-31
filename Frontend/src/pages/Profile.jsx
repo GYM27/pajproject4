@@ -1,189 +1,146 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import {
-  Container,
-  Card,
-  Alert,
-  Spinner,
-  Row,
-  Col,
-  Button,
-} from "react-bootstrap";
+import { Container, Card, Alert, Spinner, Row, Col } from "react-bootstrap";
 import { useUserStore } from "../stores/UserStore";
-import api from "../services/api";
 import { userService } from "../services/userService";
 
-// COMPONENTES IMPORTADOS
+// COMPONENTES SHARED (Reutilizados)
+import { useModalManager } from "../Modal/useModalManager.jsx";
+import ConfirmActionContent from "../Modal/ConfirmActionContent.jsx";
+import DynamicModal from "../Modal/DynamicModal.jsx";
+
+// COMPONENTES DE PERFIL
 import ProfilePhoto from "../components/Profile/ProfilePhoto";
 import ProfileForm from "../components/Profile/ProfileForm";
 import AdminActions from "../components/Profile/AdminActions";
-import DynamicModal from "../components/DynamicModal";
 
 const Profile = () => {
   const [searchParams] = useSearchParams();
-  const targetUserId = searchParams.get("userId"); // Se existir, é Admin a ver outra pessoa
+  const navigate = useNavigate();
+  const targetUserId = searchParams.get("userId");
   const isOwnProfile = !targetUserId;
 
-  const navigate = useNavigate();
-  const { userRole, setFirstName } = useUserStore();
+  // 1. GESTÃO DE MODAIS E STORE
+  const { modalConfig, openModal, closeModal } = useModalManager();
+  const { userRole } = useUserStore();
   const isAdmin = userRole === "ADMIN";
 
+  // 2. ESTADOS LOCAIS
+  const [formData, setFormData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
-  const [modalConfig, setModalConfig] = useState({ show: false });
-
-  const [formData, setFormData] = useState({
-    username: "",
-    password: "",
-    email: "",
-    firstName: "",
-    lastName: "",
-    cellphone: "",
-    photoUrl: "",
-  });
-
-  // CORREÇÃO: useEffect unificado e limpo
+  // 3. CARREGAMENTO DE DADOS
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         setLoading(true);
-        setError(null);
-        let data;
+        // Se não houver userId no URL, carrega o "meu", se houver, carrega o específico
+        const data = isOwnProfile
+            ? await userService.getMe()
+            : await userService.getUserById(targetUserId);
 
-        if (targetUserId && isAdmin) {
-          // Rota para Admin ver perfil alheio
-          data = await userService.getUserById(targetUserId);
-        } else {
-          // Carrega o perfil do próprio utilizador
-          data = await userService.getMe();
-        }
-
-        setFormData({ ...data, password: "" }); // Password nunca é enviada por segurança
+        setFormData(data);
       } catch (err) {
-        setError("Não foi possível carregar os dados do utilizador.");
+        setError("Não foi possível carregar o perfil.");
+        console.error(err);
       } finally {
         setLoading(false);
       }
     };
 
     fetchProfile();
-  }, [targetUserId, isAdmin]);
+  }, [targetUserId, isOwnProfile]);
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    setError(null);
+  // 4. LÓGICA DE EXECUÇÃO DE AÇÕES (O "Cérebro" do Modal)
+  const handleConfirmAction = async (data) => {
     try {
-      // Define o endpoint de gravação baseado no contexto
-      const endpoint =
-        !isOwnProfile && isAdmin ? `/users/admin/${targetUserId}` : "/users/me";
-      await api(endpoint, "PUT", formData);
+      const actionMap = {
+        // Eliminação Permanente (Regra A14)
+        "USER_HARD_DELETE": async () => {
+          await userService.deleteUserPermanent(targetUserId);
+          closeModal();
+          navigate("/users"); // Expulsa o admin para a lista de users
+        },
+        // Alternar entre Ativo/Inativo (Regra A9)
+        "USER_TOGGLE_STATUS": async () => {
+          const action = data.softDelete ? "softundelete" : "softdelete";
+          await userService.toggleUserStatus(targetUserId, action);
+          closeModal();
+          window.location.reload(); // Recarrega para atualizar os badges e botões
+        }
+      };
 
-      if (isOwnProfile) {
-        setFirstName(formData.firstName); // Atualiza o nome no Header/Sidebar
-        localStorage.setItem("userName", formData.firstName);
-        alert("Perfil atualizado com sucesso!");
-      } else {
-        alert("Perfil do utilizador atualizado pelo Administrador!");
+      const actionToExecute = actionMap[modalConfig.type];
+      if (actionToExecute) {
+        await actionToExecute();
       }
     } catch (err) {
-      setError("Erro ao atualizar o perfil. Verifique os dados.");
-    } finally {
-      setSaving(false);
+      alert("Erro ao processar a ação. Por favor, tente novamente.");
     }
   };
 
-  const handleConfirmHardDelete = async () => {
-    try {
-      await userService.deleteUserPermanent(targetUserId);
-      navigate("/users");
-    } catch (err) {
-      alert("Erro ao remover utilizador. Pode ainda ter leads ativas.");
-      setModalConfig({ show: false });
-    }
-  };
-
-  if (loading)
+  if (loading) {
     return (
-      <Container className="text-center mt-5">
-        <Spinner animation="border" variant="primary" />
-        <p>A carregar perfil...</p>
-      </Container>
+        <div className="text-center mt-5">
+          <Spinner animation="border" variant="primary" />
+          <p className="mt-2">A carregar perfil...</p>
+        </div>
     );
+  }
 
   return (
-    <Container className="py-4">
-      <Row className="justify-content-center">
-        <Col md={8} lg={6}>
-          <Card className="shadow-sm border-0">
-            <Card.Body className="p-4">
-              <ProfilePhoto
-                photoUrl={formData.photoUrl}
-                firstName={formData.firstName}
-                lastName={formData.lastName}
-              />
+      <Container className="py-5">
+        <Row className="justify-content-center">
+          <Col md={10} lg={8}>
+            <Card className="shadow-sm border-0">
+              <Card.Body className="p-4">
 
-              <h3 className="text-center fw-bold mb-4">
-                {isOwnProfile
-                  ? "O Meu Perfil"
-                  : `Perfil de ${formData.firstName}`}
-              </h3>
+                {/* Foto e Header */}
+                <div className="text-center mb-4 border-bottom pb-4">
+                  <ProfilePhoto photoUrl={formData?.photoUrl} />
+                  <h3 className="fw-bold mt-3 text-secondary">
+                    {isOwnProfile ? "O Meu Perfil" : `Perfil de ${formData?.firstName}`}
+                  </h3>
+                  {formData?.softDelete && (
+                      <span className="badge bg-danger mt-2">CONTA DESATIVADA</span>
+                  )}
+                </div>
 
-              {error && <Alert variant="danger">{error}</Alert>}
+                {error && <Alert variant="danger">{error}</Alert>}
 
-              <ProfileForm
-                formData={formData}
-                handleChange={handleChange}
-                handleSubmit={handleSubmit}
-                isOwnProfile={isOwnProfile}
-                loading={saving}
-              />
-
-              {/* Botões de atalho para Admin gerir o utilizador */}
-              {!isOwnProfile && isAdmin && (
-                <AdminActions
-                  userId={targetUserId}
-                  onHardDelete={() => setModalConfig({ show: true })}
+                {/* Formulário de Dados (Apenas leitura do username garantida no ProfileForm) */}
+                <ProfileForm
+                    formData={formData}
+                    isOwnProfile={isOwnProfile}
                 />
-              )}
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
 
-      <DynamicModal
-        show={modalConfig.show}
-        onHide={() => setModalConfig({ show: false })}
-        title="Ação Irreversível"
-      >
-        <div className="text-center p-3">
-          <i className="bi bi-exclamation-octagon text-danger display-4"></i>
-          <p className="mt-3">
-            Vai apagar <strong>PERMANENTEMENTE</strong> o utilizador{" "}
-            {formData.firstName}.<br />
-            As suas leads e clientes ficarão órfãos. Esta ação não pode ser
-            desfeita.
-          </p>
-          <div className="d-flex justify-content-center gap-2 mt-4">
-            <Button
-              variant="secondary"
-              onClick={() => setModalConfig({ show: false })}
-            >
-              Cancelar
-            </Button>
-            <Button variant="danger" onClick={handleConfirmHardDelete}>
-              Sim, Apagar Conta
-            </Button>
-          </div>
-        </div>
-      </DynamicModal>
-    </Container>
+                {/* Painel de Administração (Apenas visível para Admin e em perfis de outros) */}
+                {!isOwnProfile && isAdmin && (
+                    <div className="mt-5 pt-4 border-top">
+                      <AdminActions
+                          isDeleted={formData?.softDelete}
+                          onToggleStatus={() => openModal("USER_TOGGLE_STATUS", "Alterar Estado", formData)}
+                          onHardDelete={() => openModal("USER_HARD_DELETE", "Eliminação Permanente", formData)}
+                      />
+                    </div>
+                )}
+
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+
+        {/* 5. MODAL ÚNICO DE CONFIRMAÇÃO */}
+        <DynamicModal show={modalConfig.show} onHide={closeModal} title={modalConfig.title}>
+          <ConfirmActionContent
+              type={modalConfig.type}
+              data={modalConfig.data}
+              onCancel={closeModal}
+              onConfirm={handleConfirmAction}
+          />
+        </DynamicModal>
+      </Container>
   );
 };
 

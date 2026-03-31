@@ -139,6 +139,19 @@ public class LeadsBean implements Serializable {
     // FUNCIONALIDADES DE ADMIN ----------------------------------------
 
     /**
+     * Restaura uma lead que estava na lixeira (Undelete).
+     */
+    public void restoreLead(Long leadId) {
+        LeadEntity lead = leadDao.getLeadByLeadID(leadId);
+        if (lead != null) {
+            // Mudamos o estado para false para que ela volte a ser "Ativa"
+            lead.setSoftDeleted(false);
+            leadDao.merge(lead);
+        }
+    }
+
+
+    /**
      * Listagem com filtros para Administrador
      */
     public List<LeadDTO> getLeadsWithFilters(Integer stateId, Long userId, Boolean softDeleted) {

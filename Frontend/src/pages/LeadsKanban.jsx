@@ -5,14 +5,14 @@ import { useUserStore } from "../stores/UserStore";
 import { userService } from "../services/userService";
 
 // Componentes da Pasta Shared
-import { useModalManager } from "../components/useModalManager.jsx";
+import { useModalManager } from "../Modal/useModalManager.jsx";
 import { useResourceActions } from "../components/Shared/useResourceActions.jsx";
-import GenericModalContent from "../components/Shared/GenericModalContent";
+import ConfirmActionContent from "../Modal/ConfirmActionContent.jsx";
 
 // Componentes de Leads
 import KanbanHeader from "../components/Leads/KanbanHeader.jsx";
 import KanbanColumn from "../components/Leads/KanbanColumn";
-import DynamicModal from "../components/DynamicModal";
+import DynamicModal from "../Modal/DynamicModal.jsx";
 import EditLeadForm from "../components/Leads/EditLeadForm";
 
 const COLUMNS_DEF = [
@@ -80,15 +80,7 @@ const LeadsKanban = () => {
             filters={filters}
             setFilters={setFilters}
             users={users}
-            actions={{
-              ...actions,
-              onRestoreAll: () => leadStore.handleBulkAction(
-                  filters.userId,
-                  "RESTORE_ALL",
-                  userRole,
-                  { userId: filters.userId, softDeleted: true }
-              )
-            }}
+            actions={actions}
         />
 
         {/* Zona Kanban com cardActions injetados do hook shared */}
@@ -119,7 +111,7 @@ const LeadsKanban = () => {
               />
           ) : (
               /* Conteúdo Genérico para Confirmações (Soft Delete, Hard Delete, Bulk) */
-              <GenericModalContent
+              <ConfirmActionContent
                   type={modalConfig.type}
                   data={modalConfig.data}
                   onCancel={closeModal}
@@ -128,8 +120,10 @@ const LeadsKanban = () => {
                       const actionMap = {
                           "SOFT_DELETE": () => leadStore.deleteLead(data.id, userRole, false),
                           "HARD_DELETE": () => leadStore.deleteLead(data.id, userRole, true),
-                          "BULK_SOFT_DELETE": () => leadStore.handleBulkAction(data.userId, "SOFT_DELETE_ALL", userRole, { userId: filters.userId }),
-                          "BULK_HARD_DELETE": () => leadStore.handleBulkAction(data.userId, "EMPTY_TRASH", userRole, { userId: filters.userId })
+                          "BULK_SOFT_DELETE": () => leadStore.handleBulkAction(data.userId, "SOFT_DELETE_ALL", userRole, { userId: filters.userId,softDeleted: isTrashMode }),
+                          "BULK_HARD_DELETE": () => leadStore.handleBulkAction(data.userId, "EMPTY_TRASH", userRole, { userId: filters.userId,softDeleted: isTrashMode }),
+                          "RESTORE_LEAD": () => leadStore.restoreLead(data.id, data, userRole),
+                          "RESTORE_ALL": () => leadStore.handleBulkAction(data.userId, "RESTORE_ALL", userRole, { userId: filters.userId, softDeleted: isTrashMode })
                       };
 
                       // 2. Procuramos a função certa com base no tipo de modal atual

@@ -5,14 +5,14 @@ import { useUserStore } from "../stores/UserStore";
 import { userService } from "../services/userService";
 
 // COMPONENTES SHARED (Arquitetura Nova)
-import { useModalManager } from "../components/useModalManager";
+import { useModalManager } from "../Modal/useModalManager.jsx";
 import { useResourceActions } from "../components/Shared/useResourceActions";
-import GenericModalContent from "../components/Shared/GenericModalContent";
+import ConfirmActionContent from "../Modal/ConfirmActionContent.jsx";
 
 // COMPONENTES DE CLIENTES
 import ClientsHeader from "../components/Clients/ClientsHeader";
 import ClientCard from "../components/Clients/ClientCard";
-import DynamicModal from "../components/DynamicModal";
+import DynamicModal from "../Modal/DynamicModal.jsx";
 import EditClientForm from "../components/Clients/EditClientForm";
 import "../App.css";
 
@@ -115,7 +115,7 @@ const Clients = () => {
                     />
                 ) : (
                     /* Conteúdo Genérico para Confirmações (Soft Delete, Hard Delete, Bulk) */
-                    <GenericModalContent
+                    <ConfirmActionContent
                         type={modalConfig.type}
                         data={modalConfig.data}
                         onCancel={closeModal}
@@ -127,7 +127,9 @@ const Clients = () => {
                                 "SOFT_DELETE": () => clientStore.deleteClient(data.id, false),
                                 "HARD_DELETE": () => clientStore.deleteClient(data.id, true),
                                 "BULK_SOFT_DELETE": () => clientStore.handleBulkAction(data.userId, "DEACTIVATE_ALL", userRole, currentFilters),
-                                "BULK_HARD_DELETE": () => clientStore.handleBulkAction(data.userId, "EMPTY_TRASH", userRole, currentFilters)
+                                "BULK_HARD_DELETE": () => clientStore.handleBulkAction(data.userId, "EMPTY_TRASH", userRole, currentFilters),
+                                "RESTORE_CLIENT": () => clientStore.restoreClient(data.id, data, userRole), // Para o Card individual
+                                "RESTORE_ALL": () => clientStore.handleBulkAction(data.userId, "RESTORE_ALL", userRole, { userId: filters.userId, softDeleted: isTrashMode }) // Para o Header
                             };
 
                             const actionToExecute = actionMap[modalConfig.type];

@@ -5,7 +5,7 @@ import {useLeadStore} from "../../stores/LeadsStore";
 import {useUserStore} from "../../stores/UserStore";
 
 // Importa os componentes do novo sistema de Modais
-import DynamicModal from "../DynamicModal";
+import DynamicModal from "../../Modal/DynamicModal.jsx";
 import EditLeadForm from "./EditLeadForm";
 
 const LeadDetails = () => {
