@@ -26,7 +26,7 @@ const UserMenu = () => {
   const handleLogout = () => {
     // 1. LIMPEZA FÍSICA: O teu apiRequest e UserStore usam sessionStorage!
     sessionStorage.clear();
-    localStorage.clear(); // Por precaução, caso tenhas restos de dados aqui
+    localStorage.clear(); // Por precaução, caso tenha restos de dados aqui
 
     // 2. LIMPEZA REATIVA: Remove o role de "ADMIN" da memória do React
     clearUser();

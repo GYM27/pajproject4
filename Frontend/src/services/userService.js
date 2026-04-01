@@ -30,6 +30,14 @@ export const userService = {
     },
 
     /**
+     * EDITA O PRÓPRIO PERFIL:
+     * Envia as alterações do utilizador para a base de dados.
+     */
+    updateMyProfile: async (userData) => {
+        return await api("/users/me", "PUT", userData);
+    },
+
+    /**
      * CONSULTA POR ID (ADMIN VIEW):
      * Permite que o Admin carregue os detalhes de um colaborador específico
      * ao clicar num UserCard ou ao navegar para /profile?userId=X.
@@ -42,7 +50,7 @@ export const userService = {
      * GESTÃO DE ESTADO (REGRA A9 - SOFT DELETE):
      * Utiliza o verbo PATCH para uma alteração parcial de estado.
      * @param {string} id - ID do utilizador alvo.
-     * @param {string} action - "softdelete" (Desativar) ou "softundelete" (Reativar).
+     * @param {string} action - "deactivate" (Desativar) ou "activate" (Reativar).
      */
     toggleUserStatus: async (id, action) => {
         return await api(`/users/${id}/${action}`, "PATCH");

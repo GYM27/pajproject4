@@ -34,4 +34,28 @@ public class LoginResponseDTO {
     public String getToken() {
         return token;
     }
+
+    public String getPhotoUrl() {
+        return photoUrl;
+    }
+
+    public void setPhotoUrl(String photoUrl) {
+        this.photoUrl = photoUrl;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public void setUserRole(UserRoles userRole) {
+        this.userRole = userRole;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
+    }
 }
