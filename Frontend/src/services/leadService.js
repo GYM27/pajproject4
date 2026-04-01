@@ -72,18 +72,22 @@ export const leadService = {
     return await api(`/leads/${id}`, "DELETE");
   },
 
-  /** * GESTÃO MANUAL DE ESTADO DE LIXEIRA:
-   * Funções que utilizam o 'adminSuperEdit' do Java para inverter o bit 'softDeleted'.
+  /**
+   * Desativa uma Lead (Soft Delete).
+   * Invoca o endpoint REST nativo configurado para inativação.
    */
   softDeleteLead: async (leadId) => {
-    const payload = { softDeleted: true };
-    // O Java ignora campos nulos, atualizando apenas a flag de desativação.
-    return await api(`/leads/admin/${leadId}`, "PUT", payload);
+    // Apenas chamamos o endpoint com o ID e o verbo DELETE
+    return await api(`/leads/${leadId}`, "DELETE");
   },
 
+  /**
+   * Restaura uma Lead previamente desativada.
+   * Invoca o endpoint REST focado estritamente na recuperação de estado.
+   */
   restoreLead: async (leadId) => {
-    const payload = { softDeleted: false };
-    return await api(`/leads/admin/${leadId}`, "PUT", payload);
+    // Utilizamos PATCH pois estamos a fazer uma alteração parcial de estado (inverter a flag).
+    return await api(`/leads/${leadId}/restore`, "PATCH");
   },
 
   /** * OPERAÇÕES EM MASSA (ADMIN - BULK ACTIONS):

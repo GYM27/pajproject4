@@ -132,7 +132,7 @@ public class ClientsBean {
         UserEntity requester = tokenBean.getUserEntityByToken(token);
         if (requester == null) throw new WebApplicationException(401);
 
-        Long filterId = (requester.getUserRole() == UserRoles.ADMIN) ? userId : requester.getId();
+        Long filterId = (requester.getUserRole() == UserRoles.ADMIN && userId != null) ? userId : requester.getId();
 
         return toDTOList(clientsDao.findClientsWithFilters(filterId, true));
     }
@@ -149,13 +149,13 @@ public class ClientsBean {
         return clientsDao.bulkUpdateSoftDelete(userId, false); // Restaura tudo
     }
 
+    /**
+     * Esvazia a lixeira (Hard Delete).
+     * Delega para a operação Bulk do DAO para evitar N+1 queries.
+     */
     public boolean emptyTrash(Long userId) {
         try {
-            // Obtemos a lista da lixeira e removemos fisicamente
-            List<ClientsEntity> trashList = clientsDao.findClientsWithFilters(userId, true);
-            for (ClientsEntity c : trashList) {
-                clientsDao.remove(c);
-            }
+            int apagados = clientsDao.emptyTrashByUserId(userId);
             return true;
         } catch (Exception e) {
             return false;

@@ -6,6 +6,7 @@ import aor.paj.projecto4.entity.ClientsEntity;
 import aor.paj.projecto4.entity.UserEntity;
 import jakarta.ejb.Stateless;
 import jakarta.persistence.NoResultException;
+import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
 
 @Stateless
@@ -51,6 +52,18 @@ public class ClientsDao extends AbstractDao<ClientsEntity> {
                 .executeUpdate();
 
 
+    }
+
+    /**
+     * BULK DELETE: Esvazia a lixeira numa única query (Resolve o N+1)
+     * @param userId ID do proprietário
+     */
+    public int emptyTrashByUserId(Long userId) {
+        Query query = em.createQuery(
+                "DELETE FROM ClientsEntity c WHERE c.owner.id = :userId AND c.softDelete = true"
+        );
+        query.setParameter("userId", userId);
+        return query.executeUpdate();
     }
 
     public void hardDelete(Long id) {

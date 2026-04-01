@@ -9,6 +9,7 @@ import aor.paj.projecto4.dto.UserBaseDTO;
 import aor.paj.projecto4.dto.UserDTO;
 import aor.paj.projecto4.entity.UserEntity;
 import jakarta.ws.rs.WebApplicationException;
+
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -120,24 +121,24 @@ public class UsersBean implements Serializable {
         user.setPassword(userDTO.getPassword());
     }
 
-    /**
-     * Edição feita pelo ADMIN sobre qualquer utilizador.
-     */
-    public void putEditUser(Long id, UserBaseDTO dto) {
-        UserEntity user = userDao.find(id);
-        if (user == null) throw new WebApplicationException("Utilizador não encontrado", 404);
-
-        // Valida email duplicado (excluindo o próprio user)
-        UserEntity other = userDao.findUserByEmail(dto.getEmail());
-        if (other != null && !other.getId().equals(id))
-            throw new WebApplicationException("Email já associado a outra conta.", 409);
-
-        mapDtoToEntity(dto, user);
-        // O Admin também pode alterar o Role se necessário
-        if (dto.getRole() != null) {
-            user.setUserRole(aor.paj.projecto4.utils.UserRoles.valueOf(dto.getRole()));
-        }
-    }
+//    /**
+//     * Edição feita pelo ADMIN sobre qualquer utilizador.
+//     */
+//    public void putEditUser(Long id, UserBaseDTO dto) {
+//        UserEntity user = userDao.find(id);
+//        if (user == null) throw new WebApplicationException("Utilizador não encontrado", 404);
+//
+//        // Valida email duplicado (excluindo o próprio user)
+//        UserEntity other = userDao.findUserByEmail(dto.getEmail());
+//        if (other != null && !other.getId().equals(id))
+//            throw new WebApplicationException("Email já associado a outra conta.", 409);
+//
+//        mapDtoToEntity(dto, user);
+//        // O Admin também pode alterar o Role se necessário
+//        if (dto.getRole() != null) {
+//            user.setUserRole(aor.paj.projecto4.utils.UserRoles.valueOf(dto.getRole()));
+//        }
+//    }
 
     public void softDeleteUser(Long id) {
         UserEntity user = userDao.find(id);
@@ -180,6 +181,7 @@ public class UsersBean implements Serializable {
 
     /**
      * Autentica um utilizador verificando username, password e estado da conta.
+     *
      * @param loginDTO Dados vindos do formulário de login.
      * @return LoginResponseDTO se bem-sucedido, null se as credenciais falharem ou conta inativa.
      */
@@ -206,10 +208,13 @@ public class UsersBean implements Serializable {
             // CORREÇÃO: Passamos também a foto da entidade para o DTO
             return new LoginResponseDTO(
                     userEntity.getId(),
+                    userEntity.getUsername(),
                     userEntity.getFirstName(),
+                    userEntity.getLastName(),
+                    userEntity.getEmail(),
                     userEntity.getUserRole(),
                     token,
-                    userEntity.getPhoto() //
+                    userEntity.getPhoto()
             );
         }
 

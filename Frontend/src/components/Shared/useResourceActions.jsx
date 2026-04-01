@@ -41,6 +41,7 @@ export const useResourceActions = (openModal, filters, stores) => {
          * O ActionGroup ignorará estas ações automaticamente, garantindo segurança no Frontend.
          */
         onRestore: isAdmin ? (lead) => openModal("RESTORE_LEAD", "Restaurar Lead", lead) : undefined,
+        onHardDelete: isAdmin ? (lead) => openModal("HARD_DELETE", "Eliminar Lead Definitivamente", lead) : undefined,
         onRestoreAll: isAdmin ? () => openModal("RESTORE_ALL", "Restaurar Todos os Itens", { userId: filters?.userId }) : undefined,
         onEmptyTrash: isAdmin ? () => openModal("BULK_HARD_DELETE", "Esvaziar Lixeira Definitivamente", { userId: filters?.userId }) : undefined,
     };
@@ -50,12 +51,13 @@ export const useResourceActions = (openModal, filters, stores) => {
         onView: (client) => navigate(`/clients/${client.id}`),
         onEdit: (client) => openModal("EDIT_CLIENT", "Editar Cliente", client),
         onDelete: (client) => openModal("SOFT_DELETE", "Remover Cliente", client),
-        openCreate: () => navigate("/clients/new", { state: { targetId: filters?.userId } }),
+        openCreate: () => navigate("/clients/new", {state: {targetId: filters?.userId}}),
 
-        onBulkDelete: () => openModal("BULK_SOFT_DELETE", "Mover Tudo para Lixeira", { userId: filters?.userId }),
+        onBulkDelete: () => openModal("BULK_SOFT_DELETE", "Mover Tudo para Lixeira", {userId: filters?.userId}),
 
         // Espelhamento das permissões de Admin para Clientes
         onRestore: isAdmin ? (client) => openModal("RESTORE_CLIENT", "Restaurar Cliente", client) : undefined,
+        onHardDelete: isAdmin ? (client) => openModal("HARD_DELETE", "Eliminar Cliente Definitivamente", client) : undefined,
         onRestoreAll: isAdmin ? () => openModal("RESTORE_ALL", "Restaurar Todos os Itens", { userId: filters?.userId }) : undefined,
         onEmptyTrash: isAdmin ? () => openModal("BULK_HARD_DELETE", "Esvaziar Lixeira Definitivamente", { userId: filters?.userId }) : undefined,
     };
