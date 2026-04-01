@@ -77,7 +77,7 @@ public class LeadService {
      * O verifier garante: Token válido, User ativo, Existência da lead e Posse/Admin.
      */
     @GET
-    @Path("/{leadId}") // Retiramos o /me para padronizar com /clients
+    @Path("/{leadId:[0-9]+}") // Retiramos o /me para padronizar com /clients
     @Produces(MediaType.APPLICATION_JSON)
     public Response getLeadById(@HeaderParam("token") String token,
                                 @PathParam("leadId") Long leadId) {

@@ -60,7 +60,7 @@ export const useProfileManager = (targetUserId, isOwnProfile) => {
                 },
                 // REGRA A9: Soft Delete (Ativar/Desativar utilizador sem apagar registos)
                 "USER_TOGGLE_STATUS": async () => {
-                    const action = data.softDelete ? "softundelete" : "softdelete";
+                    const action = data.softDelete ? "activate" : "deactivate";
                     await userService.toggleUserStatus(targetUserId, action);
                     closeModal();
                     // Força o refresh para garantir que as permissões e badges atualizam

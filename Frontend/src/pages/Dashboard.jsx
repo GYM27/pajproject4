@@ -31,19 +31,16 @@ const Dashboard = () => {
 
   /**
    * LÓGICA DE DADOS DINÂMICA (REGRA DE NEGÓCIO - 5%):
-   * Esta função decide qual o "dataset" a carregar baseando-se nas permissões do utilizador.
+   * Esta função carrega os dados dependendo da sessão do utilizador.
    */
   const fetchDashboardData = useCallback(async () => {
-    // PROTEÇÃO: Impede chamadas à API se o Role ainda não estiver disponível na Store.
     if (!userRole) return;
 
     try {
-      /** * SELEÇÃO DE ENDPOINTS (RBAC):
-       * - ADMIN: Acede a '/leads/admin' e '/clients/admin' para visão global da empresa.
-       * - USER: Acede a '/leads' e '/clients' para ver apenas os seus próprios registos.
-       */
-      const leadsEndpoint = userRole === "ADMIN" ? "/leads/admin" : "/leads";
-      const clientsEndpoint = userRole === "ADMIN" ? "/clients/admin" : "/clients";
+      // Roteamento dinâmico restabelecido!
+      // Como o Java já tem o Regex, o /admin vai funcionar na perfeição.
+      const leadsEndpoint = userRole === "ADMIN" ? "/leads/" : "/leads";
+      const clientsEndpoint = userRole === "ADMIN" ? "/clients/" : "/clients";
 
       const [leads, clientes] = await Promise.all([
         api(leadsEndpoint),
@@ -93,7 +90,6 @@ const Dashboard = () => {
         {/* BARRA DE BOAS-VINDAS PERSONALIZADA (UX - 3%) */}
         <div className="barra-welcome mb-4 p-3 bg-light rounded shadow-sm d-flex justify-content-between align-items-center">
           <h3 className="m-0">Olá, <strong>{firstName || "Utilizador"}</strong></h3>
-          <span className="badge bg-primary px-3 py-2">Modo: {userRole}</span>
         </div>
 
         {/* FUNIL DE VENDAS: Cards clicáveis que aplicam filtros na navegação */}

@@ -1,6 +1,5 @@
 package aor.paj.projecto4.bean;
 
-
 import aor.paj.projecto4.dto.LoginDTO;
 import aor.paj.projecto4.dto.LoginResponseDTO;
 import jakarta.ejb.Stateless;
@@ -178,6 +177,7 @@ public class UsersBean implements Serializable {
         }
         return result;
     }
+
     /**
      * Autentica um utilizador verificando username, password e estado da conta.
      * @param loginDTO Dados vindos do formulário de login.
@@ -203,16 +203,17 @@ public class UsersBean implements Serializable {
             String token = tokenBean.generateNewToken(userEntity);
 
             // 4. Montamos a resposta para o React
+            // CORREÇÃO: Passamos também a foto da entidade para o DTO
             return new LoginResponseDTO(
                     userEntity.getId(),
                     userEntity.getFirstName(),
                     userEntity.getUserRole(),
-                    token
+                    token,
+                    userEntity.getPhoto() //
             );
         }
 
         // Se falhar qualquer condição, retornamos null (o LoginBean tratará do erro 401)
         return null;
     }
-
 }

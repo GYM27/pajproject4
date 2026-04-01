@@ -69,6 +69,7 @@ public class UserService {
         return Response.ok(userDTO).build();
     }
 
+
     // =========================================================================
     // SEÇÃO DE ADMINISTRADOR (Gestão de Terceiros)
     // =========================================================================
@@ -90,7 +91,7 @@ public class UserService {
      * URL: GET /users/{id}
      */
     @GET
-    @Path("/{id}")
+    @Path("/{id:[0-9]+}") // REGEX ADICIONADA
     @Produces(MediaType.APPLICATION_JSON)
     public Response getUserById(@PathParam("id") Long id, @HeaderParam("token") String token) {
         verifier.verifyAdmin(token);
@@ -106,7 +107,7 @@ public class UserService {
      * URL: PUT /users/{id}
      */
     @PUT
-    @Path("/{id}")
+    @Path("/{id:[0-9]+}") // REGEX ADICIONADA
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response adminEditUser(
@@ -124,7 +125,7 @@ public class UserService {
      * URL: PATCH /users/{id}/deactivate
      */
     @PATCH
-    @Path("/{id}/deactivate")
+    @Path("/{id:[0-9]+}/deactivate") // REGEX ADICIONADA
     @Produces(MediaType.APPLICATION_JSON)
     public Response deactivateUser(@PathParam("id") Long id, @HeaderParam("token") String token) {
         verifier.verifyAdmin(token);
@@ -137,7 +138,7 @@ public class UserService {
      * URL: PATCH /users/{id}/activate
      */
     @PATCH
-    @Path("/{id}/activate")
+    @Path("/{id:[0-9]+}/activate") // REGEX ADICIONADA
     @Produces(MediaType.APPLICATION_JSON)
     public Response activateUser(@PathParam("id") Long id, @HeaderParam("token") String token) {
         verifier.verifyAdmin(token);
@@ -150,7 +151,7 @@ public class UserService {
      * URL: DELETE /users/{id}
      */
     @DELETE
-    @Path("/{id}")
+    @Path("/{id:[0-9]+}") // REGEX ADICIONADA
     @Produces(MediaType.APPLICATION_JSON)
     public Response deleteUser(@PathParam("id") Long id, @HeaderParam("token") String token) {
         verifier.verifyAdmin(token);
